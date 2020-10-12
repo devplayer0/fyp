@@ -1,0 +1,3 @@
+{
+    "pandoc.pdfOptString": "--template eisvogel.tex --listings --filter pandoc-citeproc",
+}
