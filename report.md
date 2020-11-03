@@ -76,3 +76,22 @@ from an emulator, comparing this to similar data from dedicated hardware.
 \newpage
 
 # References
+
+- [On automated grading of programming assignments in an academic institution](https://doi.org/10.1016/S0360-1315(03)00030-7)
+  \- automated grading in 1999 (1 year after opening of School of Computing!)
+- [Automated feedback generation for introductory programming assignments](https://doi.org/10.1145/2491956.2462195) -
+  providing feedback and correcting errors by analysing code, also providing a DSL to notate common errors
+- [MAGIC: Massive Automated Grading in the Cloud](https://www.semanticscholar.org/paper/MAGIC%3A-Massive-Automated-Grading-in-the-Cloud-Fox-Patterson/4e6a1657b6b3c73c248f852d2fb068572afad1ec?p2df)
+  \- autograding with unit tests
+- [Teaching and Learning Programming and Software Engineering via Interactive Gaming](https://doi.org/10.1109/ICSE.2013.6606662)
+  \- attempts to gamify programming; similar to autograding with tests
+- [Interface-based Programming Assignments and Automatic Grading of Java Programs](https://doi.org/10.1145/1268784.1268805)
+  \- more unit test-based grading (only mentions "non-functional" aspects)
+- [Program Analysis Tools in Automated Grading](https://github.com/Submitty/publications/raw/master/2018_SIGCSE_poster_dinella_et_al/Poster.pdf)
+  \- mostly static analysis, but mentions use of tools such as Valgrind to detect memory leaks
+- [Submitty: An Open Source, Highly-Configurable Platform for Grading of Programming Assignments](https://github.com/Submitty/Tutorial/raw/master/presentation/Submitty%20Demo%20SIGCSE%20March%2010%202017.pdf)
+  \- Submitty presentation
+- [EmbedInsight: Automated Grading of Embedded Systems Assignments](https://arxiv.org/abs/1703.04514)
+  \- use of real hardware (still black box)
+- [Testing Strategies for the Automated Grading of Student Programs](https://doi.org/10.1145/2839509.2844616)
+  \- analysis of various autograding strategies
