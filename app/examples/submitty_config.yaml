@@ -1,0 +1,20 @@
+autograding:
+  submission_to_compilation: sum.s
+  compilation_to_runner: [perfgrade.elf, perfgrade.bin]
+resource_limits:
+  RLIMIT_CPU: 600
+  RLIMIT_NPROC: 100
+  RLIMIT_STACK: 10000000
+  RLIMIT_DATA: 2000000000
+testcases:
+  - type: Compilation
+    title: Compile and link ARM program
+    command: perfgrade build.yaml
+    executable_name: perfgrade.bin
+    points: 1
+
+  - type: Simple testcase
+    command: perfgrade evaluate.yaml
+    validation:
+      - method: custom_validator
+        command: perfgrade validate.yaml

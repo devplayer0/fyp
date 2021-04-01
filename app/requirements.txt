@@ -1,0 +1,8 @@
+python-box>=5, <6
+PyYAML>=3
+protobuf>=3, <4
+pyelftools>=0.20, <1
+capstone>=3, <5
+numpy>=1.10, <2
+scipy>=0.19, <2
+pyocd>=0.30, <1

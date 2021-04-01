@@ -1,0 +1,88 @@
+steps:
+  - id: vars
+    type: exec
+    input: |
+      self.output = Box(nums=[3, 7, 11, 35])
+
+  - id: build
+    type: build
+    description: Build test code
+    input:
+      opencm3: libopencm3
+      uut: sum.s
+      harness: sum_harness.s
+      defines:
+        ARR_SPACE: !expr len(vars.nums) * 4
+
+  - id: symtab
+    type: symtab
+    input: !expr build.elf
+
+  - type: copy
+    description: Copy ELF
+    input:
+      - src: !expr build.elf
+        dst: perfgrade.elf
+
+  - id: eval
+    type: evaluate
+    description: Run program
+    input:
+      #type: simulation
+      type: hardware
+      #timeout: 5
+      debug: true
+      #extra_args: [--wait-gdb]
+
+      gem5: ../../gem5
+      #variant: opt
+      start_addr: !expr symtab['do_test']
+      done_addr: !expr symtab['eval_done']
+      probes:
+        - 066CFF303430484257251617
+        - 0671FF485648756687013343
+
+      firmware: !expr build.rom
+
+      test_data:
+        addr: !expr symtab['arr_size']
+        data: !expr "struct.pack('<I' + ('I'*len(vars.nums)), len(vars.nums), *vars.nums)"
+        when: !expr symtab[('main', 2)]
+
+      dump_ranges:
+        - start: !expr symtab['sum']
+          size: 4
+
+  - id: compare
+    type: diff
+    description: Compare output
+    input:
+      a: !expr '[sum(vars.nums)]'
+      b: !expr struct.unpack('<I', eval.dump[0])
+
+  - id: traces
+    type: load_traces
+    input:
+      gem5: ../../gem5
+      file: !expr eval.traces
+
+  - id: extra_traces
+    type: augment_traces
+    input:
+      elf: !expr build.elf
+      traces: !expr traces
+
+  - type: heatmap
+    input:
+      basedir: !expr build.dir
+      source: !expr build.uut
+      traces: !expr extra_traces
+      html_out: heatmap.html
+
+  - id: validate
+    type: exec
+    input: |
+      if compare.diff:
+        print('Difference in output found!')
+        print(compare.diff, end='')
+        sys.exit(1)

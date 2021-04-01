@@ -1,0 +1,83 @@
+steps:
+  - id: sizes
+    type: exec
+    input: |
+      self.output = [1, 5, 10, 20, 50, 100, 300]
+
+  - id: build
+    type: build
+    description: Build test code
+    input:
+      debug: false
+      opencm3: libopencm3
+      uut: loop.s
+      harness: loop_harness.s
+      defines:
+        LOOP_SIZE_SPACE: 4
+
+  - id: symtab
+    type: symtab
+    input: !expr build.elf
+
+  - id: n_evals
+    type: mapped
+    input:
+      parallel: 8
+      items: !expr sizes
+      step:
+        type: pipeline
+        input:
+          steps:
+            - id: eval
+              type: evaluate
+              description: !expr 'f"Run n = {item}"'
+              input:
+                #type: simulation
+                type: hardware
+
+                gem5: ../../gem5
+                #variant: opt
+                start_addr: !expr symtab['do_test']
+                done_addr: !expr symtab['eval_done']
+                probes:
+                  - 066CFF303430484257251617
+                  - 0671FF485648756687013343
+
+                firmware: !expr build.rom
+
+                test_data:
+                  addr: !expr symtab['loop_size']
+                  data: !expr struct.pack("<I", item)
+                  when: !expr symtab[('main', 2)]
+
+            - id: traces
+              type: load_traces
+              input:
+                gem5: ../../gem5
+                file: !expr eval.traces
+
+            - id: cycles
+              type: cycle_count
+              input:
+                traces: !expr traces
+                first_pc: !expr symtab['do_test']
+                last_pc: !expr symtab['eval_done']
+
+  - id: complexity
+    type: curve_guess
+    description: Guess complexity
+    input:
+      functions:
+        linear: !expr 'lambda x, k, c: k * x + c'
+        squared: !expr 'lambda x, k, c: k * x ** 2 + c'
+        cubed: !expr 'lambda x, k, c: k * x ** 3 + c'
+        log: !expr 'lambda x, k, c: k * np.log10(x) + c'
+        nlog: !expr 'lambda x, k, c: k * x * np.log10(x) + c'
+      data:
+        x: !expr sizes
+        y: !expr 'list(map(lambda m: m.cycles.cycles, n_evals))'
+
+  - type: exec
+    description: Print info
+    input: |
+      print(f'Estimated complexity: {complexity.function} (error {complexity.error})')

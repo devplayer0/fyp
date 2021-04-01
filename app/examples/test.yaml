@@ -1,0 +1,106 @@
+steps:
+  - id: vars
+    type: exec
+    input: |
+      self.output = Box(data_size=4)
+
+  - id: build
+    type: build
+    description: Build test code
+    input:
+      debug: false
+      opencm3: libopencm3
+      uut: loop.s
+      harness: loop_harness.s
+      defines:
+        LOOP_SIZE_SPACE: !expr vars.data_size
+
+  - id: symtab
+    type: symtab
+    input: !expr build.elf
+
+  - type: copy
+    description: Copy ELF
+    input:
+      src: !expr build.elf
+      dst: perfgrade.elf
+
+  - id: eval
+    type: evaluate
+    description: Run program
+    input:
+      #type: simulation
+      type: hardware
+      #timeout: 5
+      debug: true
+      #extra_args: []
+
+      gem5: ../../gem5
+      #variant: opt
+      start_addr: !expr symtab['do_test']
+      done_addr: !expr symtab['eval_done']
+      cycles_addr: 0xe0001004
+      probes:
+        - 066CFF303430484257251617
+        - 0671FF485648756687013343
+
+      #elf: !expr build.elf
+      firmware: !expr build.rom
+
+      test_data:
+        addr: !expr symtab['loop_size']
+        data: !expr struct.pack("<I", 30)
+        # For some reason main mis-aligned (to force switch to Thumb?)
+        when: !expr symtab[('main', 2)]
+
+  - id: traces
+    type: load_traces
+    input:
+      gem5: ../../gem5
+      file: !expr eval.traces
+
+  - id: extra_traces
+    type: augment_traces
+    input:
+      elf: !expr build.elf
+      #basedir: !expr build.dir
+      traces: !expr traces
+
+  - id: count
+    type: cycle_count
+    input:
+      traces: !expr traces
+      first_pc: !expr symtab['do_test']
+      last_pc: !expr symtab['eval_done']
+
+  - id: grade
+    type: bucket_grade
+    input:
+      value: 5
+      buckets:
+        - max: 3
+        - max: 10
+          max_grade: 1
+          f: !expr 'lambda x: x'
+        - max: 1000
+          max_grade: 0.4
+          f: !expr 'lambda x: x**2'
+
+  - type: exec
+    description: Print info
+    input: |
+      print(f'Ticks elapsed: {count.ticks}')
+      print(f'Cycles simulated: {count.cycles}')
+      print(f'Grade: {grade}')
+
+      print(f'log-log: {np.log(count.cycles) / np.log(30)}')
+
+      #for t in extra_traces:
+      #    print(f'PC=0x{t.orig.pc:08x} @ cycle {t.orig.cycle} {t.filename}:{t.line}')
+
+  - type: heatmap
+    input:
+      basedir: !expr build.dir
+      source: !expr build.uut
+      traces: !expr extra_traces
+      html_out: heatmap.html
