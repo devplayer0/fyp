@@ -1,25 +1,3 @@
-#FROM alpine:3.13 as gem5_builder
-#ARG GPERFTOOLS_VERSION=2.9.1
-#
-#RUN apk --no-cache add git build-base m4 scons musl-dev libunwind-dev \
-#    linux-headers zlib-dev protobuf-dev protoc python3-dev py3-six boost-dev \
-#    libexecinfo-dev
-#
-#WORKDIR /opt
-#
-#RUN wget "https://github.com/gperftools/gperftools/releases/download/gperftools-$GPERFTOOLS_VERSION/gperftools-$GPERFTOOLS_VERSION.tar.gz" && \
-#    tar zxf "gperftools-$GPERFTOOLS_VERSION.tar.gz"
-#RUN cd "gperftools-$GPERFTOOLS_VERSION" && \
-#    ./configure && \
-#    make -j$(nproc) && \
-#    make install
-#
-#RUN git clone https://github.com/devplayer0/gem5
-#RUN cd gem5 && scons build/ARM/gem5.fast -j$(nproc)
-#
-#FROM python:3.9-alpine:3.13
-#
-#CMD ['perfgrade']
 FROM gcr.io/gem5-test/ubuntu-20.04_all-dependencies AS gem5_builder
 
 WORKDIR /opt
