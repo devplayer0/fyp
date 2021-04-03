@@ -5,6 +5,7 @@ import os.path
 import shutil
 
 from box import Box
+import yaml
 
 from . import util
 from .step import Step
@@ -56,6 +57,7 @@ class Pipeline(Step):
             self.steps.append(step)
 
         for i, step in enumerate(self.steps):
+            ctx['self'] = step
             local_ctx = step._eval_input(ctx)
             step.run(local_ctx)
             self.logger.info(f'✔️ {i+1}/{len(self.steps)} {str(step)}')
@@ -87,7 +89,7 @@ class Mapped(Step):
                 step = Pipeline.make_step(i, s, self.logger.child(f'🔁 {i+1}/{len(self.input["items"])} '))
                 self.steps.append(step)
 
-                i_ctx = step._eval_input({**ctx, 'i': i, 'item': item})
+                i_ctx = step._eval_input({**ctx, 'self': step, 'i': i, 'item': item})
                 futures.append(executor.submit(self._do_step, i, i_ctx))
 
             self.output = [None] * len(self.steps)
@@ -99,6 +101,22 @@ class Mapped(Step):
     def close(self):
         for s in self.steps:
             s.close()
+
+class Include(Step):
+    _step = None
+
+    def run(self, ctx: Mapping):
+        with open(self.input) as f:
+            step_input = Box(yaml.safe_load(f))
+        step_input.id = self.id
+
+        self._step = Pipeline.make_step(-1, step_input, self.logger)
+        s_ctx = self._step._eval_input(ctx)
+
+        self._step.run(s_ctx)
+
+    def __str__(self):
+        return str(self._step)
 
 STEPS = {
     'exec': Exec,
@@ -121,4 +139,5 @@ STEPS = {
 
     'pipeline': Pipeline,
     'mapped': Mapped,
+    'include': Include,
 }
