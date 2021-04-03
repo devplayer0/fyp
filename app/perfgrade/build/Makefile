@@ -1,7 +1,7 @@
 PROJECT = perfgrade
 BUILD_DIR = bin
 
-CSTD = -std=c17
+CSTD = -std=c11
 INCLUDES += -Iinclude
 VPATH += src
 CFILES = src/main.c
