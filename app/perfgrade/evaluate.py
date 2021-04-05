@@ -257,9 +257,13 @@ class PyOCD(Evaluator):
         return True
 
     @staticmethod
-    def await_halt(session: PyOCDSession, interval: float=0.1):
+    def await_halt(session: PyOCDSession, interval: float=0.1, timeout: int=None):
+        start = time.monotonic()
         while session.target.get_state() != PyOCDTarget.State.HALTED:
             time.sleep(interval)
+
+            if timeout and time.monotonic() - start >= timeout:
+                raise TimeoutError('Timed out waiting for CPU halt')
 
     def __init__(self, *args, probes: Iterable=None, target: str='stm32f407vg', start_addr: int=0, done_addr: int=None,
             extra_options: dict=None, cycles_addr: int=0xe0001004, gem5: str=None, **kwargs):
@@ -313,7 +317,7 @@ class PyOCD(Evaluator):
                     target.set_breakpoint(self.test_data.when)
                     target.resume()
 
-                    self.await_halt(session)
+                    self.await_halt(session, timeout=self.timeout)
                     assert target.read_core_register('pc') == self.test_data.when
                     target.remove_breakpoint(self.test_data.when)
 
@@ -324,7 +328,7 @@ class PyOCD(Evaluator):
             target.set_breakpoint(self.done_addr)
             target.resume()
 
-            self.await_halt(session)
+            self.await_halt(session, timeout=self.timeout)
             assert target.read_core_register('pc') == self.done_addr
             target.remove_breakpoint(self.done_addr)
 
