@@ -13,5 +13,5 @@ func writeAccessLog(w io.Writer, params handlers.LogFormatterParams) {
 		"agent":   params.Request.UserAgent(),
 		"status":  params.StatusCode,
 		"resSize": params.Size,
-	}).Debugf("%v %v", params.Request.Method, params.URL.RequestURI())
+	}).Infof("%v %v", params.Request.Method, params.URL.RequestURI())
 }

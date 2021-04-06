@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	nanoid "github.com/matoous/go-nanoid"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/devplayer0/fyp/submitty-anon/pkg/util"
@@ -89,6 +90,11 @@ func (s *Server) viewRegister(w http.ResponseWriter, r *http.Request) {
 		util.ErrResponse(w, err, 0)
 		return
 	}
+
+	log.WithFields(log.Fields{
+		"username": info.Username,
+		"password": info.Password,
+	}).Info("Registered user")
 
 	util.TemplateResponse(tplRegistered, info, w, http.StatusOK)
 }
