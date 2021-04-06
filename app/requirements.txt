@@ -6,3 +6,4 @@ capstone>=3, <5
 numpy>=1.10, <2
 scipy>=0.19, <2
 pyocd>=0.30, <1
+matplotlib>=3, <4

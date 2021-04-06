@@ -7,6 +7,7 @@ import os.path
 
 from box import Box
 import numpy as np
+import matplotlib.pyplot as plt
 
 from . import util
 
@@ -19,6 +20,7 @@ class Step(abc.ABC):
         'Box': Box,
         'struct': struct,
         'np': np,
+        'plt': plt,
     }
 
     description = None

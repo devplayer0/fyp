@@ -1,8 +1,10 @@
 from collections.abc import Mapping
+import math
 import string
 import html
 
 from box import Box
+import numpy as np
 
 from .step import Step
 
@@ -93,3 +95,23 @@ class Heatmap(Step):
         if self.input.get('html_out'):
             with open(self.input['html_out'], 'w') as f:
                 f.write(self.output)
+
+class CurveGuess(Step):
+    description = 'Find closest function to data'
+
+    def run(self, ctx: Mapping):
+        import scipy.optimize
+
+        input_ = Box(self.input)
+        xdata = np.array(input_.data.x)
+        ydata = np.array(input_.data.y)
+        self.output = Box(function=None, error=math.inf)
+        for name, f in input_.functions.items():
+            popt, pcov = scipy.optimize.curve_fit(f, xdata, ydata)
+            perr = np.sqrt(np.diag(pcov))
+
+            error = abs(perr[0] + perr[1])
+            if error < self.output.error:
+                self.output.function = name
+                self.output.error = error
+                self.output.params = popt

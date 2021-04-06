@@ -12,8 +12,8 @@ from .step import Step
 from .build import Build, Symtab
 from .evaluate import Evaluate
 from .tracing import Traces, AugmentTraces
-from .statistics import CycleCount, Heatmap
-from .grading import BucketGrade, CurveGuess, Diff
+from .statistics import CycleCount, Heatmap, CurveGuess
+from .grading import BucketGrade, Diff
 
 class Exec(Step):
     description = 'Arbitrary Python execution'
@@ -132,8 +132,8 @@ STEPS = {
 
     'cycle_count': CycleCount,
     'heatmap': Heatmap,
-
     'curve_guess': CurveGuess,
+
     'bucket_grade': BucketGrade,
     'diff': Diff,
 

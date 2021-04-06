@@ -1,31 +1,9 @@
 from collections.abc import Mapping
-import math
 import difflib
 
 from box import Box
-import numpy as np
-#import matplotlib.pyplot as plt
 
 from .step import Step
-
-class CurveGuess(Step):
-    description = 'Find closest function to data'
-
-    def run(self, ctx: Mapping):
-        import scipy.optimize
-
-        input_ = Box(self.input)
-        xdata = np.array(input_.data.x)
-        ydata = np.array(input_.data.y)
-        self.output = Box(function=None, error=math.inf)
-        for name, f in input_.functions.items():
-            _popt, pcov = scipy.optimize.curve_fit(f, xdata, ydata)
-            perr = np.sqrt(np.diag(pcov))
-
-            error = abs(perr[0] + perr[1])
-            if error < self.output.error:
-                self.output.function = name
-                self.output.error = error
 
 class BucketGrade(Step):
     description = 'Grade a cycle count by buckets with different functions'
