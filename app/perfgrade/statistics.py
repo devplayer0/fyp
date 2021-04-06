@@ -1,7 +1,6 @@
 from collections.abc import Mapping
 import string
 import html
-import os
 
 from box import Box
 
@@ -68,30 +67,27 @@ class Heatmap(Step):
 
     def run(self, ctx: Mapping):
         infos = []
-        with open(os.path.join(self.input.get('basedir', ''), self.input['source'])) as f:
+        with open(self.input['source']) as f:
             for line in f:
                 infos.append(Box(line=line.rstrip(), count=0, cycles=0))
 
-        last_info = None
-        prev_cycle = None
+        prev_cycle = 0
         for t in self.input['traces']:
-            # If last iteration we were looking at an in-scope line, figure out
-            # how many cycles it's been
-            if last_info:
-                last_info.cycles += t.orig.cycle - prev_cycle
-                last_info = None
-            prev_cycle = t.orig.cycle
+            if t.orig.HasField('upc'):
+                continue
 
-            if t.filename != self.input['source'] or t.line is None:
+            cycles = t.orig.cycle - prev_cycle
+            prev_cycle = t.orig.cycle
+            if t.filename != self.input.get('compilation_unit', self.input['source']) or t.line is None:
                 continue
 
             info = infos[t.line-1]
             info.count += 1
-            last_info = info
+            info.cycles += cycles
 
         rows = []
         for i, info in enumerate(infos):
-            rows.append(self.row_template.substitute(i=i, line=html.escape(info.line), count=info.count, cycles=info.cycles))
+            rows.append(self.row_template.substitute(i=i+1, line=html.escape(info.line), count=info.count, cycles=info.cycles))
 
         self.output = self.html_template.substitute(source_file=self.input['source'], rows='\n'.join(rows))
         if self.input.get('html_out'):

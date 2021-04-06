@@ -79,11 +79,13 @@ class TraceStream:
         data = self._fd.read(size)
         return cls.FromString(data)
 
+    def reset(self):
+        self._fd.seek(4, os.SEEK_SET)
+
     def traces(self):
+        self.reset()
         while t := self._read_message(self.pb.ExecTrace):
             yield t
-
-        self._fd.seek(4, os.SEEK_SET)
 
     def __iter__(self):
         return self.traces()
