@@ -33,7 +33,7 @@ func NewServer(config Config) *Server {
 	}
 
 	router.HandleFunc("/", s.viewIndex).Methods("GET")
-	router.HandleFunc("/register", s.viewRegister).Methods("POST")
+	router.HandleFunc("/", s.viewRegister).Methods("POST")
 
 	return s
 }
