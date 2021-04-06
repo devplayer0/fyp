@@ -22,6 +22,12 @@ class Exec(Step):
         code = compile(self.input, f'<Exec {self.id}>', 'exec')
         exec(code, self.GLOBALS, ctx)
 
+class Passthrough(Step):
+    description = 'Pass evaluated input through to output'
+
+    def run(self, ctx: Mapping):
+        self.output = self.input
+
 class Copy(Step):
     description = 'Copy files'
 
@@ -120,6 +126,7 @@ class Include(Step):
 
 STEPS = {
     'exec': Exec,
+    'passthrough': Passthrough,
     'copy': Copy,
 
     'build': Build,

@@ -1,6 +1,7 @@
 import abc
 from collections.abc import Mapping
 import struct
+import random
 import sys
 import os
 import os.path
@@ -13,12 +14,13 @@ from . import util
 
 class Step(abc.ABC):
     GLOBALS = {
+        'struct': struct,
+        'random': random,
         'sys': sys,
         'os': os,
         'path': os.path,
 
         'Box': Box,
-        'struct': struct,
         'np': np,
         'plt': plt,
     }
