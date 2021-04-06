@@ -13,13 +13,31 @@ import (
 
 var (
 	httpListen = flag.String("listen", ":8080", "http listen address")
+
+	submittySemester = flag.String("semester", "hilary21", "submitty semester")
+	submittyCourse   = flag.String("course", "fyp21", "submitty course")
+
+	submittyAccessLevel         = flag.Int("access-level", 3, "new user access level")
+	submittyGroup               = flag.Int("group", 4, "new user group")
+	submittyRegistrationSection = flag.Int("registration-section", 1, "new user registration section")
 )
 
 func main() {
+	flag.Parse()
+
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
 	srv := server.NewServer(server.Config{
+		DBURL: os.Getenv("DB_URL"),
+		Submitty: server.SubmittyConfig{
+			Semester: *submittySemester,
+			Course:   *submittyCourse,
+
+			AccessLevel:         *submittyAccessLevel,
+			Group:               *submittyGroup,
+			RegistrationSection: *submittyRegistrationSection,
+		},
 		HTTP: server.HTTPConfig{
 			ListenAddress: *httpListen,
 		},

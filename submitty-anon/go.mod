@@ -9,5 +9,9 @@ require (
 	github.com/go-bindata/go-bindata/v3 v3.1.3
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
+	github.com/jackc/pgx/v4 v4.11.0
+	github.com/lib/pq v1.10.0 // indirect
+	github.com/matoous/go-nanoid v1.5.0
 	github.com/sirupsen/logrus v1.8.1
+	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
 )
