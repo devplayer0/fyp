@@ -9,7 +9,7 @@ tools:
 
 bin/%: tools
 	go-bindata $(BINDATA_FLAGS)
-	go build -o $@ ./cmd/$(shell basename $@)
+	CGO_ENABLED=0 go build -o $@ ./cmd/$(shell basename $@)
 
 dev/%: tools
 	$(eval BIN = $(shell basename $@))
