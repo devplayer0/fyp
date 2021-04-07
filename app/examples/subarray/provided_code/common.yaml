@@ -1,0 +1,31 @@
+type: pipeline
+description: Common bits
+input:
+  steps:
+    - id: defines
+      type: passthrough
+      description: Definitions
+      input:
+        SQUARE_SPACE: !expr 64*64*4
+        SUB_SPACE: !expr 2*2*4
+
+    - id: encode
+      type: exec
+      description: Encode square + subsquare function
+      input: |
+        def encode(item, ss, sss):
+            def write(a, pad=0):
+                size = len(a[0])
+                data = bytearray(struct.pack('<I', size))
+                for row in a:
+                    assert len(row) == size
+                    data.extend(struct.pack('<'+('I'*size), *row))
+
+                if len(data) < pad:
+                    data.extend([0]*(pad - len(data)))
+
+                return data
+
+            return write(item.square, pad=4+ss) + write(item.sub, pad=4+sss)
+
+        self.output = encode

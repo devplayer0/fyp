@@ -1,0 +1,114 @@
+steps:
+  - id: common
+    type: include
+    input: common.yaml
+
+  - id: cases
+    type: passthrough
+    description: Set up test cases
+    input:
+      input:
+        - name: Default
+          square:
+            - [1,1,1,1,1,1,1]
+            - [1,1,1,1,1,1,1]
+            - [1,1,1,1,1,1,1]
+            - [2,2,2,2,1,1,1]
+            - [2,2,2,2,1,1,1]
+            - [2,2,2,2,1,1,1]
+            - [2,2,2,2,1,1,1]
+          sub:
+            - [2,2,2,2]
+            - [2,2,2,2]
+            - [2,2,2,2]
+            - [2,2,2,2]
+          expect: true
+      a: []
+      b: []
+      correct: 0
+
+  - id: symtab
+    type: symtab
+    input: perfgrade.elf
+
+  - id: eval_cases
+    type: mapped
+    input:
+      items: !expr cases.input
+      step:
+        type: pipeline
+        input:
+          steps:
+            - id: eval
+              type: evaluate
+              description: !expr f'Evaluate "{item.name}" ({item.expect})'
+              input:
+                type: simulation
+                #type: hardware
+                timeout: 10
+                #debug: true
+
+                gem5: /opt/gem5
+                #extra_args: [--wait-gdb]
+                variant: fast
+                #variant: opt
+                #extra_options:
+                #  pack: /opt/perfgrade/stm32f4.pack
+                #start_addr: !expr symtab['Main']
+                #done_addr: !expr symtab['test_end']
+                #probes:
+                #  - 066CFF303430484257251617
+                #  - 0671FF485648756687013343
+
+                firmware: perfgrade.bin
+
+                test_data:
+                  addr: !expr symtab['size']
+                  data: !expr common.encode(item, common.defines.SQUARE_SPACE, common.defines.SUB_SPACE)
+                  when: !expr symtab[('main', 2)]
+
+                dump_ranges:
+                  - start: !expr symtab['result']
+                    size: 4
+
+            - id: result
+              type: exec
+              description: Parse result
+              input: |
+                b = True if struct.unpack('<I', eval.dump[0])[0] == 1 else False
+
+                cases.a.append(f'{item.name} is subarray: {item.expect}')
+                cases.b.append(f'{item.name} is subarray: {b}')
+
+                if b == item.expect:
+                    cases.correct += 1
+
+  - id: compare
+    type: diff
+    description: Compare outputs
+    input:
+      a: !expr cases.a
+      b: !expr cases.b
+
+  - id: write_diff
+    description: Write diff to file
+    type: exec
+    input: |
+      with open('diff.txt', 'w') as f:
+          f.write(compare.diff)
+
+  - id: write_submitty_results
+    description: Generate Submitty validator JSON
+    type: exec
+    input: |
+      r = Box(status='success', data=Box())
+      if cases.correct == len(cases.input):
+          # Success messages are ignored, don't bother...
+          r.data.score = 1
+          r.data.status = 'success'
+      else:
+          r.data.score = cases.correct / len(cases.input)
+          r.data.status = 'failure'
+          r.data.message = 'Incorrect cases detected (check diff)'
+
+      r.to_json('validation_results.json')

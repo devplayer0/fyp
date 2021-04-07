@@ -1,0 +1,21 @@
+steps:
+  - id: common
+    type: include
+    input: common.yaml
+
+  - id: build
+    type: build
+    description: Build test code
+    input:
+      opencm3: /opt/libopencm3
+      uut: subarray.s
+      harness: subarray_harness.s
+      defines: !expr common.defines
+
+  - type: copy
+    description: Copy build results
+    input:
+      - src: !expr build.elf
+        dst: perfgrade.elf
+      - src: !expr build.rom
+        dst: perfgrade.bin
