@@ -1,0 +1,18 @@
+steps:
+  - id: build
+    type: build
+    description: Build test code
+    input:
+      opencm3: /opt/libopencm3
+      uut: arraymove.s
+      harness: arraymove_harness.s
+      defines:
+        ARR_SPACE: !expr 1024 * 4
+
+  - type: copy
+    description: Copy build results
+    input:
+      - src: !expr build.elf
+        dst: perfgrade.elf
+      - src: !expr build.rom
+        dst: perfgrade.bin

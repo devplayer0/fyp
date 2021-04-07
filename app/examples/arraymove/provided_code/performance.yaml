@@ -1,0 +1,264 @@
+steps:
+  - id: symtab
+    type: symtab
+    input: perfgrade.elf
+
+  - id: trace_case
+    type: passthrough
+    description: Set up tracing test case
+    input:
+      array: [40,41,42,43,44,45,46,47,48,49]
+      i: 9
+      j: 5
+
+  - id: trace_eval
+    type: evaluate
+    description: Evaluate original case in simulator for tracing
+    input:
+      type: simulation
+      timeout: 10
+
+      gem5: /opt/gem5
+      variant: fast
+
+      firmware: perfgrade.bin
+
+      test_data:
+        addr: !expr symtab['i']
+        data: !expr struct.pack('<II' + ('I'*len(trace_case.array)), trace_case.i, trace_case.j, *trace_case.array)
+        when: !expr symtab[('main', 2)]
+
+  - id: traces
+    type: load_traces
+    input:
+      gem5: /opt/gem5
+      file: !expr trace_eval.traces
+  - id: extra_traces
+    type: augment_traces
+    input:
+      elf: perfgrade.elf
+      traces: !expr traces
+  - id: trace_count
+    type: cycle_count
+    input:
+      traces: !expr traces
+      first_pc: !expr symtab['Main']
+      last_pc: !expr symtab['test_end']
+
+  - type: heatmap
+    input:
+      source: arraymove.s
+      compilation_unit: src/uut.S
+
+      traces: !expr extra_traces
+      total_cycles: !expr trace_count.cycles
+
+      html_out: heatmap.html
+  - id: heatmap_pdf
+    type: exec
+    description: Render heatmap to PDF
+    input: |
+      import subprocess
+
+      #subprocess.check_call(['wkhtmltoimage', '--log-level', 'none', '-f', 'jpg', '--zoom', '2', 'heatmap.html', 'heatmap.pdf'])
+      subprocess.check_call(['wkhtmltopdf', '--log-level', 'none', 'heatmap.html', 'heatmap.pdf'])
+
+  - id: trace_eval_hw
+    type: evaluate
+    description: Evaluate original case in hardware for accurate cycle counting
+    input:
+      type: hardware
+      timeout: 10
+
+      start_addr: !expr symtab['Main']
+      done_addr: !expr symtab['test_end']
+      probes:
+        # On workstation
+        #- 066CFF303430484257251617
+        #- 0671FF485648756687013343
+
+        # Attached to server
+        - 0668FF303430484257255736
+        - 066DFF303430484257142139
+      gem5: /opt/gem5
+      extra_options:
+        pack: /opt/perfgrade/stm32f4.pack
+
+      firmware: perfgrade.bin
+
+      test_data:
+        addr: !expr symtab['i']
+        data: !expr struct.pack('<II' + ('I'*len(trace_case.array)), trace_case.i, trace_case.j, *trace_case.array)
+        when: !expr symtab[('main', 2)]
+
+  - id: hw_traces
+    type: load_traces
+    input:
+      gem5: /opt/gem5
+      file: !expr trace_eval_hw.traces
+  - id: hw_count
+    type: cycle_count
+    input:
+      traces: !expr hw_traces
+      first_pc: !expr symtab['Main']
+      last_pc: !expr symtab['test_end']
+
+
+  - id: perf_cases
+    type: exec
+    description: Generate test cases for performance curve
+    input: |
+      #r = random.Random(1337)
+
+      self.output = Box(sizes=[1, 4, 8, 16, 32, 64, 128, 256, 384, 512, 768, 1024], datas=[])
+      for n in self.output.sizes:
+          #i = r.randrange(n)
+          #j = r.randrange(n)
+          # Worst-case performance!
+          i = n-1
+          j = 0
+
+          l = [123]*n
+
+          data = struct.pack('<II' + ('I'*len(l)), i, j, *l)
+          self.output.datas.append(data)
+
+  - id: perf_evals
+    type: mapped
+    description: Run many test cases to measure performance
+    input:
+      parallel: 2
+      items: !expr perf_cases.datas
+      step:
+        type: pipeline
+        input:
+          steps:
+            - id: eval
+              type: evaluate
+              description: !expr f'Evaluate n = {perf_cases.sizes[i]}'
+              input:
+                type: hardware
+                timeout: 10
+
+                start_addr: !expr symtab['Main']
+                done_addr: !expr symtab['test_end']
+                probes:
+                  # On workstation
+                  #- 066CFF303430484257251617
+                  #- 0671FF485648756687013343
+
+                  # Attached to server
+                  - 0668FF303430484257255736
+                  - 066DFF303430484257142139
+                gem5: /opt/gem5
+                extra_options:
+                  pack: /opt/perfgrade/stm32f4.pack
+
+                firmware: perfgrade.bin
+
+                test_data:
+                  addr: !expr symtab['i']
+                  data: !expr item
+                  when: !expr symtab[('main', 2)]
+
+            - id: traces
+              type: load_traces
+              input:
+                gem5: /opt/gem5
+                file: !expr eval.traces
+
+            - id: count
+              type: cycle_count
+              input:
+                traces: !expr traces
+                first_pc: !expr symtab['Main']
+                last_pc: !expr symtab['test_end']
+
+  - id: cycles
+    type: passthrough
+    description: Collect cycles
+    input: !expr 'list(map(lambda m: m.count.cycles, perf_evals))'
+
+  - id: loglog
+    type: passthrough
+    description: Calculate log-log slope
+    input: !expr np.polyfit(np.log(perf_cases.sizes), np.log(cycles), 1)[0]
+
+  - id: grade
+    type: bucket_grade
+    input:
+      value: !expr loglog
+      xlabel: log-log slope (O(n^x))
+      graph_file: grade.pdf
+      buckets:
+        - max: 0.8
+        - max: 1
+          max_grade: 0.8
+        - max: 1.8
+          max_grade: 0.6
+        - max: 2.5
+          max_grade: 0.2
+
+  - id: functions
+    type: passthrough
+    description: Common performance functions
+    input:
+      eval:
+        linear: !expr 'lambda x, k, c: k * x + c'
+        squared: !expr 'lambda x, k, c: k * x ** 2 + c'
+        cubed: !expr 'lambda x, k, c: k * x ** 3 + c'
+        log: !expr 'lambda x, k, c: k * np.log10(x) + c'
+        nlog: !expr 'lambda x, k, c: k * x * np.log10(x) + c'
+      str:
+        linear: O(n)
+        squared: O(n^2)
+        cubed: O(n^3)
+        log: O(log n)
+        nlog: O(n * log n)
+
+  - id: complexity
+    type: curve_guess
+    description: Estimate complexity
+    input:
+      functions: !expr functions.eval
+      data:
+        x: !expr perf_cases.sizes
+        y: !expr cycles
+
+  - type: exec
+    description: Generate performance plot
+    input: |
+      fig, ax = plt.subplots()
+      ax.set_title('Performance curve')
+      ax.set_xlabel('Array size')
+      ax.set_ylabel('CPU Cycles')
+
+      ax.plot(perf_cases.sizes, cycles, 'ro', label='Evaluated data')
+
+      x = np.linspace(perf_cases.sizes[0], perf_cases.sizes[-1], num=128)
+      ax.plot(x, functions.eval[complexity.function](x, *complexity.params), label=f'Fitted {functions.str[complexity.function]} function')
+
+      ax.legend()
+      fig.savefig('curve.pdf')
+
+  - id: stats
+    type: exec
+    description: Write stats
+    input: |
+      with open('stats.txt', 'w') as f:
+          print(f'Under original test case: {trace_case.array} - {trace_case.i} -> {trace_case.j}:', file=f)
+          print(f' - Simulated cycles: {trace_count.cycles}', file=f)
+          print(f' - Hardware cycles: {hw_count.cycles}', file=f)
+          print(file=f)
+
+          print(f'With {len(perf_cases.sizes)} hardware tests:', file=f)
+          print(f' - log-log slope (O(n^x)): {loglog}', file=f)
+          print(f' - Your code runs in (estimated) {functions.str[complexity.function]} time (error {complexity.error})', file=f)
+          print(f' - Overall performance grade: {grade:.2}/1.0', file=f)
+
+  - id: write_submitty_results
+    description: Generate Submitty validator JSON
+    type: exec
+    input: |
+      r = Box(status='success', data=Box(score=grade, status='success'))
+      r.to_json('validation_results.json')

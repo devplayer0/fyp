@@ -1,0 +1,97 @@
+autograding:
+  submission_to_compilation: [arraymove.s]
+
+  submission_to_runner: [arraymove.s]
+  compilation_to_runner: [perfgrade.sh, correctness.yaml, performance.yaml, perfgrade.elf, perfgrade.bin]
+
+  work_to_public: [test03/heatmap.pdf, test03/grade.pdf, test03/curve.pdf]
+
+resource_limits:
+  RLIMIT_CPU: 600
+  RLIMIT_NPROC: 1000
+  RLIMIT_STACK: 10000000
+  RLIMIT_DATA: 4000000000
+  RLIMIT_FSIZE: 0x8000000
+testcases:
+  - type: Compilation
+    title: Assemble and link ARM program
+    command: ./perfgrade.sh build.yaml
+    executable_name: perfgrade.bin
+    points: 2
+    validation:
+      - method: fileExists
+        description: Perfgrade log (stderr)
+        actual_file: STDERR.txt
+        show_actual: always
+        deduction: 0
+      - method: fileExists
+        description: Make log (stdout)
+        actual_file: STDOUT.txt
+        show_actual: always
+        deduction: 0
+
+  - title: Correctness
+    command: ./perfgrade.sh correctness.yaml
+    points: 4
+    validation:
+      - method: custom_validator
+        command: cp test02/validation_results.json .
+        description: Correctness check
+        actual_file: validation_results.json
+        show_actual: never
+        deduction: 1
+      - method: errorIfNotEmpty
+        description: Output difference
+        actual_file: diff.txt
+        show_actual: on_failure
+        deduction: 0
+
+      - method: fileExists
+        description: Perfgrade log (stderr)
+        actual_file: STDERR.txt
+        show_actual: always
+        deduction: 0
+      - method: fileExists
+        description: gem5 info (stdout)
+        actual_file: STDOUT.txt
+        show_actual: always
+        deduction: 0
+
+  - title: Performance
+    command: ./perfgrade.sh performance.yaml
+    points: 4
+    validation:
+      - method: custom_validator
+        command: cp test03/validation_results.json .
+        description: Performance grade
+        actual_file: validation_results.json
+        show_actual: never
+        deduction: 1
+
+      - method: errorIfEmpty
+        description: Statistics
+        actual_file: stats.txt
+        deduction: 0
+      - method: errorIfEmpty
+        description: Heatmap
+        actual_file: heatmap.pdf
+        deduction: 0
+      - method: errorIfEmpty
+        description: Grade curve
+        actual_file: grade.pdf
+        deduction: 0
+      - method: errorIfEmpty
+        description: Performance curve
+        actual_file: curve.pdf
+        deduction: 0
+
+      - method: fileExists
+        description: Perfgrade log (stderr)
+        actual_file: STDERR.txt
+        show_actual: always
+        deduction: 0
+      - method: fileExists
+        description: gem5 info (stdout)
+        actual_file: STDOUT.txt
+        show_actual: always
+        deduction: 0
