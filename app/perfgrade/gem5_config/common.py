@@ -1,5 +1,15 @@
 from m5.objects import *
 
+class CM4XBar(CoherentXBar):
+    width = 16
+
+    frontend_latency = 0
+    forward_latency = 1
+    response_latency = 0
+    snoop_response_latency = 0
+
+    header_latency = 0
+
 # Simple ALU Instructions have a latency of 1
 class FUMinorInt(MinorDefaultIntFU):
     opList = [ OpDesc(opClass='IntAlu', opLat=1) ]

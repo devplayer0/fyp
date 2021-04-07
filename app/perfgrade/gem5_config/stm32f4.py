@@ -6,7 +6,7 @@ import m5
 from m5.objects import *
 #from m5.util import *
 
-from common import parse_range, CM4
+from common import parse_range, CM4XBar, CM4Minor, CM4
 
 parser = argparse.ArgumentParser()
 parser.add_argument('rom', help='ROM to load')
@@ -37,10 +37,10 @@ system.mem_ranges = [
 ]
 
 # Create a CPU
-system.cpu = CM4()
+system.cpu = CM4Minor()
 
 # Create a memory bus, a system crossbar, in this case
-system.membus = SystemXBar()
+system.membus = CM4XBar()
 system.membus.badaddr_responder = BadAddr()
 system.membus.default = system.membus.badaddr_responder.pio
 
@@ -53,11 +53,11 @@ system.cpu.createInterruptController()
 
 # Create memory regions
 # TODO: Read-only ROM?
-system.sram = SimpleMemory(range=system.mem_ranges[0], latency='30ns')
+system.sram = SimpleMemory(range=system.mem_ranges[0], latency='0ns')
 system.sram.port = system.membus.mem_side_ports
-system.rom = SimpleMemory(range=system.mem_ranges[1])
+system.rom = SimpleMemory(range=system.mem_ranges[1], latency='1ns')
 system.rom.port = system.membus.mem_side_ports
-system.rom_alias = SimpleMemory(range=system.mem_ranges[2])
+system.rom_alias = SimpleMemory(range=system.mem_ranges[2], latency='1ns')
 system.rom_alias.port = system.membus.mem_side_ports
 system.scs = SimpleMemory(range=system.mem_ranges[3])
 system.scs.port = system.membus.mem_side_ports

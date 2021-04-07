@@ -1,3 +1,9 @@
 /libopencm3/
-/*.elf
-/*.html*
+*.elf
+*.bin
+*.html*
+*.pdf
+diff.txt
+stats.txt
+validation_results.json
+config.json
