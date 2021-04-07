@@ -117,9 +117,10 @@ class Include(Step):
         step_input.id = self.id
 
         self._step = Pipeline.make_step(-1, step_input, self.logger)
-        s_ctx = self._step._eval_input(ctx)
+        s_ctx = self._step._eval_input({**ctx, 'self': self._step})
 
         self._step.run(s_ctx)
+        self.output = self._step.output
 
     def __str__(self):
         return str(self._step)
