@@ -5,6 +5,8 @@ import html
 
 from box import Box
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.colors import to_hex as c_to_css
 
 from .step import Step
 
@@ -32,11 +34,13 @@ class CycleCount(Step):
 class Heatmap(Step):
     description = 'Generate program heatmap'
 
+
+    cmap = plt.get_cmap('Wistia')
     row_template = string.Template('''    <tr>
         <td>$i</td>
         <td><code>$line</code></td>
         <td>$count</td>
-        <td>$cycles</td>
+        <td style="background-color: $color;">$cycles</td>
     </tr>
 ''')
     html_template = string.Template('''<!DOCTYPE html>
@@ -45,7 +49,7 @@ class Heatmap(Step):
     <title>Heatmap</title>
     <style>
         body {
-            width: 75em;
+            width: 110em;
             margin: 0 auto;
             font-family: Tahoma, Verdana, Arial, sans-serif;
         }
@@ -89,7 +93,11 @@ class Heatmap(Step):
 
         rows = []
         for i, info in enumerate(infos):
-            rows.append(self.row_template.substitute(i=i+1, line=html.escape(info.line), count=info.count, cycles=info.cycles))
+            color = 'inherit'
+            if 'total_cycles' in self.input:
+                color = c_to_css(self.cmap(info.cycles / self.input['total_cycles']))
+
+            rows.append(self.row_template.substitute(i=i+1, line=html.escape(info.line), count=info.count, cycles=info.cycles, color=color))
 
         self.output = self.html_template.substitute(source_file=self.input['source'], rows='\n'.join(rows))
         if self.input.get('html_out'):
