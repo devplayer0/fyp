@@ -21,7 +21,7 @@ class BucketGrade(Step):
 
         for i, bucket in enumerate(input_.buckets):
             if i == 0:
-                prev_max = 0
+                prev_max = bucket.max
                 max_grade = 1
             else:
                 max_grade = bucket.max_grade
@@ -43,16 +43,24 @@ class BucketGrade(Step):
 
             ax.plot([bucket.max]*2, [0, 1], label=bucket.get('label'))
 
-            x = input_.value
-            if self.output is None and x < bucket.max:
-                # x_bucket is input absolute value mapped to 0-1 between the bucket max/min
-                x_bucket = 1 - ((x - prev_max) / (bucket.max - prev_max))
-                grade = f_bucket(x_bucket)
+            if self.output is None:
+                x = input_.value
+                grade = None
+                if x < bucket.max:
+                    if i == 0:
+                        grade = 1.0
+                    else:
+                        # x_bucket is input absolute value mapped to 0-1 between the bucket max/min
+                        x_bucket = 1 - ((x - prev_max) / (bucket.max - prev_max))
+                        grade = f_bucket(x_bucket)
+                elif i == len(input_.buckets) - 1:
+                    grade = 0.0
 
-                ax.scatter(x, grade, color='r')
-                ax.annotate(f'{grade:.2}', (x, grade), xytext=(4, 4), textcoords='offset points')
+                if grade is not None:
+                    ax.scatter(x, grade, color='r', label='Your grade')
+                    ax.annotate(f'{grade:.2}', (x, grade), xytext=(4, 4), textcoords='offset points')
 
-                self.output = grade
+                    self.output = grade
 
         ax.legend()
         if input_.get('graph_file'):
