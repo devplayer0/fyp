@@ -1,0 +1,10 @@
+type: pipeline
+description: Common bits
+input:
+  steps:
+    - id: defines
+      type: passthrough
+      description: Definitions
+      input:
+        EXPR_SPACE: 2048
+        STACK_SIZE: 0x4000
