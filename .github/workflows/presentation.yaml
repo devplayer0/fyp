@@ -12,7 +12,9 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Install reveal-md
-        run: npm install -g reveal-md
+        run: |
+          yarn global add reveal-md
+          echo "::add-path::$(yarn global bin)"
 
       - name: Build presentation
         run: |
