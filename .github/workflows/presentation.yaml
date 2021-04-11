@@ -1,0 +1,26 @@
+name: Build and deploy presentation
+
+on:
+  push:
+    branches: [master]
+    paths: [presentation/**]
+
+jobs:
+  build_deploy:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install reveal-md
+        run: yarn global add reveal-md
+
+      - name: Build presentation
+        run: |
+          cd presentation/
+          reveal-md slides.md --css style.css --static _site
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@4.1.1
+        with:
+          branch: gh-pages
+          folder: presentation/_site
