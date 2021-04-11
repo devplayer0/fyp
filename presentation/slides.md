@@ -52,7 +52,10 @@ world use the program should be well-written: performance and maintainability
 are two important aspects, for example. If a program can sort an array correctly
 but runs in O(n^3) time, it's not much use.
 
-While the instant feedback of a functional autograding system is useful...
+While the instant feedback of a functional autograding system is useful, a
+purely success / failure result isn't a huge help to student learning. Providing
+more detailed information on _how_ a student's work was graded the way it was
+could be very helpful and encourage them to improve their work.
 
 ---
 
