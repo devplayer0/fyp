@@ -106,15 +106,39 @@ Look at the planned features included the final "product".
 - Translate a metric into a performance "value"
 - Informational results
 
+Note:
+
+A few key items to think about when designing the overall system.
+
+- Metrics: What sort of data can be generated?
+- Hardware vs Software: Two obvious overall ways of measuring performance
+- Assignment configuration: How to set up the system to grade an assignment
+- Metric to performance value: How to translate data to a grade?
+- Informational results: Non-grade output from data
+
 ---
 
 ## Metrics
 
 - Cycle counts
 - Tracing
+ - Where does a program spend its time?
  - Instructions types used
  - Memory accesses
  - ...
+
+Note:
+
+The easiest metric to create is a count of how many CPU cycles it took to run a
+program. This value gives an absolute number of how well a student's solution
+performed.
+
+Tracing is the idea of keeping track what the CPU is actually doing at a very
+fine-grained level (from sampling the program counter to generating information
+for every instruction executed). A lot of results might be produced from such
+detailed information, such as determining which parts a program uses most of its
+CPU cycles on. It would also be easy to track specific types of instructions
+(including their register values), memory access and many others.
 
 ---
 
