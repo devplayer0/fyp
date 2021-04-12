@@ -17,7 +17,7 @@ jobs:
       - name: Build presentation
         run: |
           cd presentation/
-          reveal-md slides.md --css style.css --static _site
+          reveal-md slides.md --css style.css --assets-dir assets --static _site
 
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@4.1.1
