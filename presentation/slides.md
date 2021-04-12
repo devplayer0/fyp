@@ -288,6 +288,18 @@ project working in the real world.
 
 # Implementation
 
+---
+
+## gem5 additions
+
+---
+
+## Pipeline system
+
+---
+
+## Hardware target
+
 -----
 
 # Results
