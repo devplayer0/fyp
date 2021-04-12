@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+    <title>Beyond functional autograding of ARM assembly language programs</title>
+    <link rel="shortcut icon" href="./favicon.ico"/>
+    <link rel="stylesheet" href="./dist/reveal.css" />
+    <link rel="stylesheet" href="./dist/theme/moon.css" id="theme" />
+    <link rel="stylesheet" href="./css/highlight/zenburn.css" />
+    <link rel="stylesheet" href="./_assets/style.css" />
+
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides"><section  data-markdown><script type="text/template">
+
+## Beyond functional autograding of ARM assembly language programs
+
+_Final year project_
+
+Jack O'Sullivan
+
+osullj19@tcd.ie
+
+<aside class="notes"><ul>
+<li>Slide presentation</li>
+<li>Demo of backend in terminal, then Submitty online system</li>
+<li>Results of student participation</li>
+<li>Feel free to ask questions at any stage!</li>
+</ul>
+</aside></script></section><section ><section data-markdown><script type="text/template">
+
+# Motivation and goals
+
+</script></section><section data-markdown><script type="text/template">
+
+## Motivation
+
+- Automated grading is a powerful tool
+- "Functional" or "black box" grading has limited value
+- Correctness is not the only benchmark of a solution
+- Student learning opportunities
+
+<aside class="notes"><p>Automated grading is very useful to instructors and students. Instructors and
+TA&#39;s can save time when grading. Know this from experience marking assignments
+on the module - particularly when correcting something more difficult to follow,
+like assembly. Students can also benefit - immediate feedback on whether their
+solution works.</p>
+<p>&quot;Functional&quot; or &quot;black box&quot; systems only measure correctness - pass an input to
+a program and check the output against a known-good result. How the program
+arrives at this conclusion is unknown. To illustrate, the worst case is a
+submission which simply prints a pre-determined correct result and in fact does
+nothing at all! (Hidden test cases and manual cases are used to fix this)</p>
+<p>While a solution to a problem should first produce the correct results, in real
+world use the program should be well-written: performance and maintainability
+are two important aspects, for example. If a program can sort an array correctly
+but runs in O(n^3) time, it&#39;s not much use.</p>
+<p>While the instant feedback of a functional autograding system is useful, a
+purely success / failure result isn&#39;t a huge help to student learning. Providing
+more detailed information on <em>how</em> a student&#39;s work was graded the way it was
+could be very helpful and encourage them to improve their work.</p>
+</aside></script></section><section data-markdown><script type="text/template">
+
+## Goals
+
+- Focus on performance measurement
+- Dynamic analysis of student code (simulator or real hardware)
+- Produce a grade from performance metrics
+- Generate performance feedback for instructors and students
+- Integrate with Submitty
+
+<aside class="notes"><p>For the purposes of this project, the focus is on performance (over other
+potential aspects such as maintainability).</p>
+<p>Run students&#39; code in a manner similar to the way it is already, through the use
+of some kind of simulator / emulator (with a focus on accuracy and
+instrumentation) or real hardware (in a way that can be automated with
+relative ease).</p>
+<p>With data collected from execution, figure out a way to place a student&#39;s
+submission on a scale based on how well it performs.</p>
+<!-- TODO: published research? -->
+<p>Human-readable information generated from collected data such as graphs would be
+useful (as mentioned before).</p>
+<p>Submitty is the platform currently used in the Intro to Computing modules for
+automated grading, so integration with this system is important to get the
+project working in the real world.</p>
+</aside></script></section></section><section ><section data-markdown><script type="text/template">
+
+# Design
+
+</script></section><section data-markdown><script type="text/template">
+
+## How to measure performance?
+
+- Metrics
+- Hardware vs Software
+- Assignment configuration
+- Translate a metric into a performance "value"
+- Informational results
+
+</script></section><section data-markdown><script type="text/template">
+
+## Metrics
+
+- Cycle counts
+- Tracing
+ - Instructions types used
+ - Memory accesses
+ - ...
+
+</script></section><section data-markdown><script type="text/template">
+
+## Hardware vs Software
+
+- Software: Simulation / emulation
+ - Easy to deploy
+ - Accuracy?
+ - Performance?
+- Hardware: A real microcontroller
+ - Harder to deploy
+ - Complexity and reliability
+- Both: Instrumentation capabilities?
+
+</script></section><section data-markdown><script type="text/template">
+
+## Emulators and simulators
+
+- xPack QEMU
+ - QEMU fork
+ - Emulates Cortex-M4 (no FPU)
+ - Specific STM32 peripherals
+- Unicorn
+ - Another QEMU fork
+ - Widely used in reverse engineering
+ - Pure software with API
+- gem5
+ - Highly advanced modelling
+ - Very modular
+ - Contributions from silicon vendors
+
+</script></section><section data-markdown><script type="text/template">
+
+## Comparison
+
+<table style="font-size: 60%;">
+  <thead>
+    <tr>
+        <th>Tool</th>
+        <th>Accuracy</th>
+        <th>Performance</th>
+        <th>Compatibility</th>
+        <th>Instrumentation</th>
+        <th>Difficulty</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+        <td>xPack QEMU</td>
+        <td class="t-poor">Low</td>
+        <td class="t-good">Medium</td>
+        <td class="t-good">Medium</td>
+        <td class="t-poor">Low</td>
+        <td class="t-excellent">Low</td>
+    </tr>
+    <tr>
+        <td>Unicorn</td>
+        <td class="t-poor">Low</td>
+        <td class="t-good">Medium</td>
+        <td class="t-poor">Low</td>
+        <td class="t-good">Medium</td>
+        <td class="t-excellent">Low</td>
+    </tr>
+    <tr>
+        <td>gem5</td>
+        <td class="t-good">Medium / High*</td>
+        <td class="t-poor">Low</td>
+        <td class="t-poor">Low / Medium*</td>
+        <td class="t-excellent">High</td>
+        <td class="t-good">Medium / High*</td>
+    </tr>
+    <tr>
+        <td>Hardware</td>
+        <td class="t-excellent">High</td>
+        <td class="t-excellent">High</td>
+        <td class="t-excellent">High</td>
+        <td class="t-excellent">High*</td>
+        <td class="t-poor">High</td>
+    </tr>
+  </tbody>
+</table>
+
+</script></section><section data-markdown><script type="text/template">
+
+## gem5
+
+- Best overall simulator
+- ARM components designed for Cortex-A* cores
+- Develop a simplified, accurate configuration
+ - "Minor" CPU model (in-order with branch prediction)
+ - No caches, peripherals or DRAM
+- Support loading of "vanilla" firmware
+ - Not a user-mode ELF
+ - Not a Linux kernel
+- Generate parsable trace data
+
+</script></section><section data-markdown><script type="text/template">
+
+## gem5 architecture
+
+- Everything is a `SimObject`, e.g. a CPU, memory module or peripheral
+ - Each `SimObject` has a Python binding
+ - Write a Python script to construct configurations from `SimObject`s
+- `SimObjects` for this project:
+  - A bare-metal workload
+  - Custom tracer to produce machine-readable data
+  - Hooks to load / dump memory for testing
+
+</script></section><section data-markdown><script type="text/template">
+
+## Hardware
+
+- Accurate simulation is hard, STM32F4xx boards are cheap
+- Open-source build tools (`libopencm3`)
+ - "Universal" gem5 + hardware firmware
+- Interacting with the debugging features
+ - OpenOCD is the classic tool (e.g. provides `gdb` remote)
+ - PyOCD is similar (in features) but entirely scriptable
+- ARMv7-M Data Watchpoint and Trace unit (DWT) provides a cycle counter
+- Tracing???
+
+</script></section><section data-markdown><script type="text/template">
+
+## Tracing???
+
+- Embedded Trace Macrocell (ETM)
+ - Precise, detailed and non-invasive
+ - Standard part of ARM's "CoreSight Architecture"
+- Usually requires €€€ hardware
+ - Clock CPU down
+ - Low-cost logic analyser
+ - Complex protocol!
+- Cortex-M4's ETM (aka ETM-M4) doesn't support cycle-accurate tracing 😥
+
+</script></section><section data-markdown><script type="text/template">
+
+## Assignment configuration
+
+- Each assignment has specific requirements
+- "Pipeline"-style configuration
+ - Inspired by DevOps
+ - YAML config file
+ - "Steps" do a specific task, e.g. run simulator or calculate grade
+ - Inline Python expressions (optional arbitrary Python steps)
+- Flexible system
+ - Can be used standalone
+ - Integrate with Submitty autograding
+
+</script></section><section data-markdown><script type="text/template">
+
+## Translating metrics into a grade
+
+- Most obvious: look at the cycle count
+- "Bucketing": Grade based on a range
+ - Nuance based on a "class of performance"
+- Measure cycles as the input size grows
+ - Guess complexity with curve fitting
+ - Plot log-log and approximate $k$ in $O(n^k)$
+ - Use $k$ instead of raw cycle count for bucket grading
+
+</script></section><section data-markdown><script type="text/template">
+
+## Informational results
+
+- "Heatmap"
+ - Use trace data to count individual instruction metrics
+ - Highlight lines of the program
+- Grade curve
+ - Show buckets and $k$
+- Plot input size vs cycle count
+ - Points are measured data
+ - Draw fitted function
+
+</script></section></section><section ><section data-markdown><script type="text/template">
+
+# Implementation
+
+</script></section><section data-markdown><script type="text/template">
+
+## gem5 additions
+
+</script></section><section data-markdown><script type="text/template">
+
+## Pipeline system
+
+</script></section><section data-markdown><script type="text/template">
+
+## Hardware target
+
+</script></section></section><section  data-markdown><script type="text/template">
+
+# Results
+</script></section></div>
+    </div>
+
+    <script src="./dist/reveal.js"></script>
+
+    <script src="./plugin/markdown/markdown.js"></script>
+    <script src="./plugin/highlight/highlight.js"></script>
+    <script src="./plugin/zoom/zoom.js"></script>
+    <script src="./plugin/notes/notes.js"></script>
+    <script src="./plugin/math/math.js"></script>
+    <script>
+      function extend() {
+        var target = {};
+        for (var i = 0; i < arguments.length; i++) {
+          var source = arguments[i];
+          for (var key in source) {
+            if (source.hasOwnProperty(key)) {
+              target[key] = source[key];
+            }
+          }
+        }
+        return target;
+      }
+
+      // default options to init reveal.js
+      var defaultOptions = {
+        controls: true,
+        progress: true,
+        history: true,
+        center: true,
+        transition: 'default', // none/fade/slide/convex/concave/zoom
+        plugins: [
+          RevealMarkdown,
+          RevealHighlight,
+          RevealZoom,
+          RevealNotes,
+          RevealMath
+        ]
+      };
+
+      // options from URL query string
+      var queryOptions = Reveal().getQueryHash() || {};
+
+      var options = extend(defaultOptions, {}, queryOptions);
+    </script>
+
+
+    <script>
+      Reveal.initialize(options);
+    </script>
+  </body>
+</html>

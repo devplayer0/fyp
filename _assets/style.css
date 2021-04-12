@@ -1,0 +1,13 @@
+li > ul {
+    font-size: 70%;
+}
+
+.t-excellent {
+    color: #17ff2e;
+}
+.t-good {
+    color: #ffc234;
+}
+.t-poor {
+    color: #ff2c2d;
+}
