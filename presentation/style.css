@@ -11,3 +11,7 @@ li > ul {
 .t-poor {
     color: #ff2c2d;
 }
+
+.hljs {
+    font-size: 70%;
+}

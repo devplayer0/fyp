@@ -539,9 +539,312 @@ cycle count), with the fitted big-O function drawn underneath.
 
 # Implementation
 
+Note:
+
+A brief look at some of the specific challenges in implementing the design.
+
 ---
 
 ## gem5 additions
+
+- Custom config file
+- `ARMROMWorkload`
+- `PerfgradeTracer`
+- `MemDump`
+
+---
+
+## Custom config file
+
+```python [3-8|11-17|21-22|24-27|29-36|38-39|41-48|53-65|67-68|70-73|75-80|82-86|88-90|92-94]
+import argparse
+
+# import the m5 (gem5) library created when gem5 is built
+import m5
+# import all of the SimObjects
+from m5.objects import *
+
+from common import parse_range, CM4XBar, CM4Minor, CM4
+
+parser = argparse.ArgumentParser()
+parser.add_argument('rom', help='ROM to load')
+parser.add_argument('--wait-gdb', action='store_true', help='Wait for GDB')
+parser.add_argument('--test-data', help='Test data file')
+parser.add_argument('--test-addr', default=0x20004000, help='Test data load address')
+parser.add_argument('--test-pc', default=0, help='Load test data when PC reaches specific value')
+parser.add_argument('--dump-ranges', help='Dump range(s) of memory after simulation (start address:size[,...])',
+    type=lambda a: [parse_range(r) for r in a.split(',')])
+
+args = parser.parse_args()
+
+# create the system we are going to simulate
+system = ArmSystem(multi_proc=False)
+
+# Set the clock fequency of the system (and all of its children)
+system.clk_domain = SrcClockDomain()
+system.clk_domain.clock = '168MHz'
+system.clk_domain.voltage_domain = VoltageDomain()
+
+# Set up the system
+system.mem_mode = 'timing'               # Use timing accesses
+system.mem_ranges = [
+    AddrRange(0x20000000, size=0x20000), # SRAM
+    AddrRange(0x08000000, size='1MiB'), # flash
+    AddrRange(0x00000000, size='1MiB'), # aliased flash
+    AddrRange(0xE000E000, size=0x1000), # System Control Space
+]
+
+# Create a CPU
+system.cpu = CM4Minor()
+
+# Create a memory bus, a system crossbar, in this case
+system.membus = CM4XBar()
+system.membus.badaddr_responder = BadAddr()
+system.membus.default = system.membus.badaddr_responder.pio
+
+# Hook the CPU ports up to the membus
+system.cpu.icache_port = system.membus.cpu_side_ports
+system.cpu.dcache_port = system.membus.cpu_side_ports
+
+# create the interrupt controller for the CPU and connect to the membus
+system.cpu.createInterruptController()
+
+# Create memory regions
+# TODO: Read-only ROM?
+system.sram = SimpleMemory(range=system.mem_ranges[0], latency='0ns')
+system.sram.port = system.membus.mem_side_ports
+system.rom = SimpleMemory(range=system.mem_ranges[1], latency='1ns')
+system.rom.port = system.membus.mem_side_ports
+system.rom_alias = SimpleMemory(range=system.mem_ranges[2], latency='1ns')
+system.rom_alias.port = system.membus.mem_side_ports
+system.scs = SimpleMemory(range=system.mem_ranges[3])
+system.scs.port = system.membus.mem_side_ports
+
+# Connect the system up to the membus
+system.system_port = system.membus.cpu_side_ports
+
+# Set the CPU to use the raw firmware as its workload
+system.workload = ARMROMWorkload(rom_file=args.rom)
+
+# Custom tracer which emits protobufs
+system.cpu.tracer = PerfgradeTracer()
+system.cpu.wait_for_remote_gdb = args.wait_gdb
+system.cpu.createThreads()
+
+# set up the root SimObject and start the simulation
+root = Root(full_system=True, system=system)
+root.dumper = MemDump(system=system)
+
+# instantiate all of the objects we've created above
+m5.instantiate()
+
+if args.test_data:
+    if args.test_pc:
+        root.dumper.loadWhen(args.test_data, Addr(args.test_addr), Addr(args.test_pc))
+    else:
+        root.dumper.load(args.test_data, Addr(args.test_addr))
+
+print("Beginning simulation!")
+exit_event = m5.simulate()
+print('Exiting @ tick %i because %s' % (m5.curTick(), exit_event.getCause()))
+
+if args.dump_ranges:
+    for i, r in enumerate(args.dump_ranges):
+        root.dumper.dump(f'mem{i}.bin', r.getValue())
+```
+
+---
+
+## `ARMROMWorkload`
+
+```c++ [1|7-8|10-11|13-14|30-34|36-37|39|46-47|49|51-62]
+ARMROMWorkload::ARMROMWorkload(const Params &p) : Workload(p), _params(p)
+{
+    if (params().rom_file == "") {
+        fatal("No ROM file set for full system simulation");
+    }
+
+    Loader::ImageFileDataPtr ifd(new Loader::ImageFileData(params().rom_file));
+    image = Loader::RawImage(ifd).buildImage();
+
+    _start = 0x08000000 + image.minAddr();
+    _end   = 0x08000000 + image.maxAddr();
+
+    // Need to read the ROM directly to get the entrypoint early on
+    entry = letoh(((uint32_t*)ifd->data())[1]);
+
+    Loader::Symbol ep;
+    ep.binding = Loader::Symbol::Binding::Global;
+    ep.name = "_start";
+    ep.address = entry & ~1;
+
+    insertSymbol(ep);
+    Loader::debugSymbolTable.insert(_symtab);
+}
+
+void
+Perfgrade::ARMROMWorkload::initState()
+{
+    auto &phys_mem = system->physProxy;
+
+    // ROM exists at 0x00000000 and at 0x08000000
+    image.write(phys_mem);
+
+    image.offset(0x08000000);
+    image.write(phys_mem);
+
+    // Magic @ CPUID register
+    phys_mem.write(0xe000ed00, 0xcafebabe);
+
+    RegVal initial_sp = phys_mem.read<uint32_t>(0x0);
+
+    DPRINTF(Loader, "Initial SP value = %#x\n", initial_sp);
+    DPRINTF(Loader, "Entry point      = %#x\n", getEntry());
+
+    auto *t0 = system->threads[0];
+
+    ArmISA::Reset().invoke(t0);
+    t0->activate();
+
+    t0->setIntReg(ArmISA::StackPointerReg, initial_sp);
+
+    // Make sure the T flag is set
+    ArmISA::CPSR cpsr = t0->readMiscRegNoEffect(ArmISA::MISCREG_CPSR);
+    cpsr.t = 1;
+    t0->setMiscRegNoEffect(ArmISA::MISCREG_CPSR, cpsr);
+
+    // For gem5 to be happy the PC must be aligned, changing the pcState with
+    // the CPSR T flag set will unalign it
+    ArmISA::PCState pc = t0->pcState();
+    pc.thumb(true);
+    pc.nextThumb(true);
+    pc.set(pc.pc() & ~mask(1));
+    t0->pcState(pc);
+}
+```
+
+---
+
+## `PerfgradeTracer`
+
+```c++ [30-33|42-47|8-11|13-15|17|18-20|21-25|27]
+ProtoOutputStream *Tracer::traceStream;
+
+void
+TracerRecord::dump()
+{
+    StaticInstPtr inst = staticInst;
+
+    PGProto::ExecTrace trace;
+    trace.set_tick(curTick());
+    trace.set_cycle(thread->getCpuPtr()->curCycle());
+    trace.set_pc(pc.instAddr());
+
+    if (staticInst->isMicroop()) {
+        trace.set_upc(pc.upc());
+    }
+
+    trace.set_predicate(predicate);
+    if (data_status != DataInvalid) {
+        trace.set_data(data.as_int);
+    }
+    if (getMemValid()) {
+        PGProto::MemAccess *mem = trace.mutable_mem();
+        mem->set_addr(addr);
+        mem->set_size(size);
+    }
+
+    Tracer::traceStream->write(trace);
+}
+
+Tracer::Tracer(const Params &params) : InstTracer(params)
+{
+    createTraceFile(params.file_name);
+}
+
+void
+Tracer::createTraceFile(std::string filename)
+{
+    // Since there is only one output file for all tracers check if it exists
+    if (traceStream)
+        return;
+
+    traceStream = new ProtoOutputStream(simout.resolve(filename));
+
+    // Output the header
+    PGProto::Header header;
+    header.set_tick_freq(SimClock::Frequency);
+    traceStream->write(header);
+
+    // get a callback when we exit so we can close the file
+    registerExitCallback([this]() { closeStream(); });
+}
+
+void
+Tracer::closeStream()
+{
+    if (!traceStream)
+        return;
+
+    delete traceStream;
+    traceStream = NULL;
+}
+Tracer::~Tracer()
+{
+    closeStream();
+}
+```
+
+---
+
+## `MemDump`
+
+```c++ [31-35|37-42|15-19|4-6|8-10|24-25|27-28]
+static void loadData(PortProxy &proxy, const std::string &filename,
+    const Addr addr)
+{
+    std::ifstream ifs(filename, ios::binary|ios::ate);
+    std::ifstream::pos_type size = ifs.tellg();
+    ifs.seekg(0, ios::beg);
+
+    std::vector<uint8_t> buffer(size);
+    ifs.read((char *)buffer.data(), size);
+    proxy.writeBlob(addr, buffer.data(), size);
+}
+
+namespace Perfgrade {
+
+void
+LoadEvent::process(ThreadContext *tc)
+{
+    loadData(tc->getPhysProxy(), filename, addr);
+}
+
+void
+MemDump::dump(const std::string &filename, const AddrRange range)
+{
+    std::vector<uint8_t> buffer(range.size());
+    system->physProxy.readBlob(range.start(), buffer.data(), buffer.size());
+
+    OutputStream *out = simout.create(filename, true);
+    out->stream()->write((const char *)buffer.data(), buffer.size());
+}
+
+void
+MemDump::load(const std::string &filename, const Addr addr)
+{
+    loadData(system->physProxy, filename, addr);
+}
+
+void
+MemDump::loadWhen(const std::string &filename, const Addr addr,
+    const Addr when)
+{
+    new LoadEvent(system, when, filename, addr);
+}
+
+} // namespace Perfgrade
+```
 
 ---
 
