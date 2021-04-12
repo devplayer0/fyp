@@ -69,17 +69,24 @@ could be very helpful and encourage them to improve their work.
 
 Note:
 
+For the purposes of this project, the focus is on performance (over other
+potential aspects such as maintainability).
+
 Run students' code in a manner similar to the way it is already, through the use
 of some kind of simulator / emulator (with a focus on accuracy and
 instrumentation) or real hardware (in a way that can be automated with
 relative ease).
 
-With data collected from execution (cycle count, memory usage, tracing etc),
-figure out a way to place a student's submission on a scale based on how well
-it performs.
+With data collected from execution, figure out a way to place a student's
+submission on a scale based on how well it performs.
 
 <!-- TODO: published research? -->
-Human-readable information generated from collected data could help instructors
+Human-readable information generated from collected data such as graphs would be
+useful (as mentioned before).
+
+Submitty is the platform currently used in the Intro to Computing modules for
+automated grading, so integration with this system is important to get the
+project working in the real world.
 
 -----
 
