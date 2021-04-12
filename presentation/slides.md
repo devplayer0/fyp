@@ -3,6 +3,8 @@ title: Beyond functional autograding of ARM assembly language programs
 theme: moon
 separator: -----
 verticalSeparator: ---
+revealOptions:
+  transition: slide
 ---
 
 ## Beyond functional autograding of ARM assembly language programs
@@ -857,3 +859,70 @@ MemDump::loadWhen(const std::string &filename, const Addr addr,
 -----
 
 # Results
+
+---
+
+## Overview
+
+- Semi-accurate gem5 emulation
+ - Access to ARM IP for improvements?
+ - Lots of scope for further work
+- Stable automated hardware evaluation
+ - No tracing
+- Useful pipeline system
+- Working Submitty integration
+
+---
+
+## Student demo
+
+- Temporary Submitty instance
+ - Anonymous submission
+ - First 3 assignments
+ - Grade and informational results
+- Survey
+ - Anonymous
+ - Likert scale
+ - 5 questions on usefulness
+
+---
+
+## Submissions
+
+- ~50 signups
+- ~35 submissions per assignment
+- No breakdowns!
+- Grading too conservative?
+ - Majority of submissions got full marks
+
+---
+
+## Survey
+
+- 19 responses
+- Majority thought the system was useful
+- Less sure on understanding ARM concepts and incorporation into grades
+
+---
+
+![Question 1](images/survey1.png)
+
+---
+
+![Question 2](images/survey2.png)
+
+---
+
+![Question 3](images/survey3.png)
+
+---
+
+![Question 4](images/survey4.png)
+
+---
+
+![Question 5](images/survey5.png)
+
+-----
+
+# Thanks for listening!
