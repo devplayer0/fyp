@@ -92,6 +92,10 @@ project working in the real world.
 
 # Design
 
+Note:
+
+Look at the planned features included the final "product".
+
 ---
 
 ## How to measure performance?
