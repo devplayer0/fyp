@@ -26,6 +26,10 @@ Note:
 
 # Motivation and goals
 
+Note:
+
+Run through of the motivations and goals for the project.
+
 ---
 
 ## Motivation
@@ -47,7 +51,7 @@ solution works.
 a program and check the output against a known-good result. How the program
 arrives at this conclusion is unknown. To illustrate, the worst case is a
 submission which simply prints a pre-determined correct result and in fact does
-nothing at all! (Hidden test cases and manual cases are used to fix this)
+nothing at all! (Hidden test cases and manual grading are used to fix this)
 
 While a solution to a problem should first produce the correct results, in real
 world use the program should be well-written: performance and maintainability
@@ -135,7 +139,7 @@ The easiest metric to create is a count of how many CPU cycles it took to run a
 program. This value gives an absolute number of how well a student's solution
 performed.
 
-Tracing is the idea of keeping track what the CPU is actually doing at a very
+Tracing is the idea of keeping track of what the CPU is actually doing at a very
 fine-grained level (from sampling the program counter to generating information
 for every instruction executed). A lot of results might be produced from such
 detailed information, such as determining which parts a program uses most of its
@@ -175,49 +179,6 @@ ideally be made to ensure code running in real hardware is safe.
 
 For the purposes of this project, the degree to which execution can be
 instrumented is very important.
-
----
-
-## Emulators and simulators
-
-- xPack QEMU
- - QEMU fork
- - Emulates Cortex-M4 (no FPU)
- - Specific STM32 peripherals
- - Used for Intro to Computing
-- Unicorn
- - Another QEMU fork
- - Pure software with API
- - Widely used in reverse engineering
-- gem5
- - Highly advanced modelling
- - Very modular
- - Contributions from silicon vendors
-
-Note:
-
-There were three emulators / simulators considered for this project.
-
-xPack QEMU ARM is a fork of the popular open-source emulator QEMU. Provided by
-the xPack project (which provides a toolchain management suite for embedded
-software), it is specifically designed to emulate Cortex-M3/M4 boards (the
-Cortex-M4 being a Cortex-M3 with optional floating point and DSP extensions,
-xPack QEMU doesn't support floating point).
-For example, when writing to an STM32F4xx GPIO peripheral in emulated code,
-xPack QEMU can draw a virtual development board with an LED which is lit based
-on the state of the GPIO pin wired to the LED in real hardware. This emulator is
-currently used in Intro to Computing!
-
-Unicorn is the self-described "Ultimate CPU emulator", designed to emulate many
-CPU's and provide an easily accessible API. It is again a fork of QEMU, but is
-designed solely to execute raw instructions (no peripherals supported). Unicorn
-is widely used in reverse engineering and other infosec tools (given it has
-bindings in 10+ languages).
-
-gem5 is an advanced simulator designed specifically for computer architecture
-research, and thus provides very advanced modelling of system components. Its
-design is modular and quite extensible, and has contributions from large
-silicon vendors (including ARM), while remaining fully open-source.
 
 ---
 
@@ -272,30 +233,32 @@ silicon vendors (including ARM), while remaining fully open-source.
 
 Note:
 
-A comparison of the most important aspects of each emulator / simulator (from
-this project's perspective).
+A comparison of the most important aspects of each emulator / simulator looked
+at for this project, along with real hardware.
 
 Both xPack QEMU and Unicorn are based on QEMU and are therefore quite similar.
 Since QEMU is designed to be a high-performance emulator for cross-platform
-execution of programs, it has poor accuracy. Since QEMU xPack emulates specific
+execution of programs, it has poor accuracy. Since xPack QEMU emulates specific
 Cortex-M4 hardware (and even specific STM32F4xx hardware), it has quite good
 compatibility (minus floating point hardware).
 
 QEMU is not designed with extensibility in mind (and has a quite nasty
 codebase). Plain QEMU (i.e. xPack) has little to no opportunities for
 instrumentation. Unicorn provides a clean API for per-instruction
-instrumentation, but individual CPU cycles are a non-starter.
+instrumentation, but anything close to cycle-accuracy isn't possible.
 
 Both QEMU-based options are easy to use, with QEMU in general being
 well-supported, xPack QEMU being already proven for Intro to Computing and
 Unicorn being widely used in infosec tooling.
 
-gem5 comes with a number of asterisks, mainly due to its modularity. gem5 has
+gem5 (as a simulator designed for architecture research) comes with a number of
+asterisks, mainly due to its modularity. gem5 has
 successfully modelled very complex cores, but is not set up for Cortex-M* cores
 out of the box (so work is needed to improve accuracy from "good" to
-"excellent"). Due to its focus on accuracy, gem5 is very slow. Again due to not
-supporting Cortex-M* out of the box, compatibility with code designed for
-Cortex-M* MCU's is poor (especially for peripherals), but can be improved. gem5
+"excellent", along with compatibility). Due to its focus on accuracy, gem5 is
+very slow.
+
+gem5
 provides many opportunities to instrument code and gather statistics (since this
 is essentially what it was designed for). Finally, it has a significant learning
 curve over the other options (with poor documentation and much less general
@@ -394,9 +357,8 @@ is quite difficult. With STM32F4xx boards being quite cheap, it's worth also
 trying a hardware-based approach.
 
 Many open-source tools exist for running code on Cortex-M*-based boards,
-`libopencm3` is a lightweight library which doesn't provide hardware
-abstraction, but definitions and simple routines to access to all of the ARM,
-Cortex-M4 and STM32Fxx peripherals, along with tooling to build and flash
+`libopencm3` is a lightweight library which fulfills this requirement, along
+with tooling to build and flash
 firmware images. With this, it would be ideal to generate a "universal"
 firmware that can run without modification in both gem5 and in hardware.
 
@@ -437,7 +399,7 @@ multi-GHz Cortex-A* core, but what about a simple Cortex-M MCU? The core could
 be clocked way down to a speed that a cheap knockoff logic analyser could work
 with. Unfortunately, the wire protocol is quite complex.
 
-The final nail is the fact that cycle-accurate tracing is an optional feature
+The final problem is the fact that cycle-accurate tracing is an optional feature
 that the Cortex-M4's ETM (the ETM-M4) doesn't support.
 
 ---
@@ -461,7 +423,7 @@ Once all of the evaluation pieces are in place, how to actually do automated
 grading? Each assignment might have its own needs...
 
 DevOps is an ever-popular idea, what about a "pipeline"? An assignment's entire
-autograding configuration could be specified in one (or more) YAML files (YAML
+autograding configuration could be specified in YAML files (YAML
 being a human-friendly config language). Each element of the YAML document could
 describe a single "step" in the pipeline, such as running code in a simulator or
 calculating a grade from previously-gathered data. Allow for inline Python
@@ -500,8 +462,8 @@ based on the "class" of performance).
 
 For a more advanced measurement, the cycle count could be measured as the size
 of the input grows (i.e. a number of evaluations of a program) would be needed.
-This is where the performance of the system becomes important! With a number of
-data points, the input size could be plotted against cycle count. Curve fitting
+This is where the performance of the system becomes important!
+The input size could be plotted against cycle count. Curve fitting
 can then be used to estimate the time complexity of a program. Using a log-log
 plot would allow for `k` in `O(n^k)` to be estimated (the slope of such a
 graph). `k` could then become the value used for the input to the bucketing
@@ -543,20 +505,11 @@ cycle count), with the fitted big-O function drawn underneath.
 
 Note:
 
-A brief look at some of the specific challenges in implementing the design.
+A brief look at some specific challenges in implementing the design.
 
 ---
 
-## gem5 additions
-
-- Custom config file
-- `ARMROMWorkload`
-- `PerfgradeTracer`
-- `MemDump`
-
----
-
-## Custom config file
+## gem5 config file
 
 ```python [3-8|11-17|21-22|24-27|29-36|38-39|41-48|53-65|67-68|70-73|75-80|82-86|88-90|92-94]
 import argparse
@@ -655,207 +608,6 @@ if args.dump_ranges:
         root.dumper.dump(f'mem{i}.bin', r.getValue())
 ```
 
----
-
-## `ARMROMWorkload`
-
-```c++ [1|7-8|10-11|13-14|30-34|36-37|39|46-47|49|51-62]
-ARMROMWorkload::ARMROMWorkload(const Params &p) : Workload(p), _params(p)
-{
-    if (params().rom_file == "") {
-        fatal("No ROM file set for full system simulation");
-    }
-
-    Loader::ImageFileDataPtr ifd(new Loader::ImageFileData(params().rom_file));
-    image = Loader::RawImage(ifd).buildImage();
-
-    _start = 0x08000000 + image.minAddr();
-    _end   = 0x08000000 + image.maxAddr();
-
-    // Need to read the ROM directly to get the entrypoint early on
-    entry = letoh(((uint32_t*)ifd->data())[1]);
-
-    Loader::Symbol ep;
-    ep.binding = Loader::Symbol::Binding::Global;
-    ep.name = "_start";
-    ep.address = entry & ~1;
-
-    insertSymbol(ep);
-    Loader::debugSymbolTable.insert(_symtab);
-}
-
-void
-Perfgrade::ARMROMWorkload::initState()
-{
-    auto &phys_mem = system->physProxy;
-
-    // ROM exists at 0x00000000 and at 0x08000000
-    image.write(phys_mem);
-
-    image.offset(0x08000000);
-    image.write(phys_mem);
-
-    // Magic @ CPUID register
-    phys_mem.write(0xe000ed00, 0xcafebabe);
-
-    RegVal initial_sp = phys_mem.read<uint32_t>(0x0);
-
-    DPRINTF(Loader, "Initial SP value = %#x\n", initial_sp);
-    DPRINTF(Loader, "Entry point      = %#x\n", getEntry());
-
-    auto *t0 = system->threads[0];
-
-    ArmISA::Reset().invoke(t0);
-    t0->activate();
-
-    t0->setIntReg(ArmISA::StackPointerReg, initial_sp);
-
-    // Make sure the T flag is set
-    ArmISA::CPSR cpsr = t0->readMiscRegNoEffect(ArmISA::MISCREG_CPSR);
-    cpsr.t = 1;
-    t0->setMiscRegNoEffect(ArmISA::MISCREG_CPSR, cpsr);
-
-    // For gem5 to be happy the PC must be aligned, changing the pcState with
-    // the CPSR T flag set will unalign it
-    ArmISA::PCState pc = t0->pcState();
-    pc.thumb(true);
-    pc.nextThumb(true);
-    pc.set(pc.pc() & ~mask(1));
-    t0->pcState(pc);
-}
-```
-
----
-
-## `PerfgradeTracer`
-
-```c++ [30-33|42-47|8-11|13-15|17|18-20|21-25|27]
-ProtoOutputStream *Tracer::traceStream;
-
-void
-TracerRecord::dump()
-{
-    StaticInstPtr inst = staticInst;
-
-    PGProto::ExecTrace trace;
-    trace.set_tick(curTick());
-    trace.set_cycle(thread->getCpuPtr()->curCycle());
-    trace.set_pc(pc.instAddr());
-
-    if (staticInst->isMicroop()) {
-        trace.set_upc(pc.upc());
-    }
-
-    trace.set_predicate(predicate);
-    if (data_status != DataInvalid) {
-        trace.set_data(data.as_int);
-    }
-    if (getMemValid()) {
-        PGProto::MemAccess *mem = trace.mutable_mem();
-        mem->set_addr(addr);
-        mem->set_size(size);
-    }
-
-    Tracer::traceStream->write(trace);
-}
-
-Tracer::Tracer(const Params &params) : InstTracer(params)
-{
-    createTraceFile(params.file_name);
-}
-
-void
-Tracer::createTraceFile(std::string filename)
-{
-    // Since there is only one output file for all tracers check if it exists
-    if (traceStream)
-        return;
-
-    traceStream = new ProtoOutputStream(simout.resolve(filename));
-
-    // Output the header
-    PGProto::Header header;
-    header.set_tick_freq(SimClock::Frequency);
-    traceStream->write(header);
-
-    // get a callback when we exit so we can close the file
-    registerExitCallback([this]() { closeStream(); });
-}
-
-void
-Tracer::closeStream()
-{
-    if (!traceStream)
-        return;
-
-    delete traceStream;
-    traceStream = NULL;
-}
-Tracer::~Tracer()
-{
-    closeStream();
-}
-```
-
----
-
-## `MemDump`
-
-```c++ [31-35|37-42|15-19|4-6|8-10|24-25|27-28]
-static void loadData(PortProxy &proxy, const std::string &filename,
-    const Addr addr)
-{
-    std::ifstream ifs(filename, ios::binary|ios::ate);
-    std::ifstream::pos_type size = ifs.tellg();
-    ifs.seekg(0, ios::beg);
-
-    std::vector<uint8_t> buffer(size);
-    ifs.read((char *)buffer.data(), size);
-    proxy.writeBlob(addr, buffer.data(), size);
-}
-
-namespace Perfgrade {
-
-void
-LoadEvent::process(ThreadContext *tc)
-{
-    loadData(tc->getPhysProxy(), filename, addr);
-}
-
-void
-MemDump::dump(const std::string &filename, const AddrRange range)
-{
-    std::vector<uint8_t> buffer(range.size());
-    system->physProxy.readBlob(range.start(), buffer.data(), buffer.size());
-
-    OutputStream *out = simout.create(filename, true);
-    out->stream()->write((const char *)buffer.data(), buffer.size());
-}
-
-void
-MemDump::load(const std::string &filename, const Addr addr)
-{
-    loadData(system->physProxy, filename, addr);
-}
-
-void
-MemDump::loadWhen(const std::string &filename, const Addr addr,
-    const Addr when)
-{
-    new LoadEvent(system, when, filename, addr);
-}
-
-} // namespace Perfgrade
-```
-
----
-
-## Pipeline system
-
----
-
-## Hardware target
-
 -----
 
 # Results
@@ -872,6 +624,21 @@ MemDump::loadWhen(const std::string &filename, const Addr addr,
 - Useful pipeline system
 - Working Submitty integration
 
+Note:
+
+An overview of what was developed.
+
+Somewhat accurate gem5 emulation of a Cortex-M4 core was achieved, although
+cycle-accuracy is a bit off. Access to ARM IP would probably be needed for
+significant improvement. Lots more could be done here, including implementation
+of peripherals.
+
+Stable hardware evalution working, albeit without tracing.
+
+Pipeline system worked fairly well and proved useful in testing.
+
+Submitty integration works!
+
 ---
 
 ## Student demo
@@ -882,8 +649,20 @@ MemDump::loadWhen(const std::string &filename, const Addr addr,
  - Grade and informational results
 - Survey
  - Anonymous
- - Likert scale
  - 5 questions on usefulness
+ - Likert scale
+
+Note:
+
+What the students had an opportunity to test:
+
+A temporary Submitty instance was deployed with an anonymous submission system,
+with pipeline configurations for the first three assignments in Intro to
+Computing II. On submission, students would receive a grade and the extra
+details mentioned earlier.
+
+After testing out the system, students were asked to submit an anonymous survey
+with 5 Likert scale-based questions on the system.
 
 ---
 
@@ -891,9 +670,15 @@ MemDump::loadWhen(const std::string &filename, const Addr addr,
 
 - ~50 signups
 - ~35 submissions per assignment
-- No breakdowns!
-- Grading too conservative?
- - Majority of submissions got full marks
+- It didn't break!
+- Majority of submissions got full marks
+ - Grading too conservative?
+
+After a "guest lecture" and email announcement, about 50 students signed up,
+with approximately 35 submissions for each assignment. The system held up to
+all the submissions thankfully!
+
+Most of the submissions got full marks - was the grading curve too generous?
 
 ---
 
@@ -902,6 +687,10 @@ MemDump::loadWhen(const std::string &filename, const Addr addr,
 - 19 responses
 - Majority thought the system was useful
 - Less sure on understanding ARM concepts and incorporation into grades
+
+On the survey: 19 responses were received. Most thought it was very useful,
+although they were less sure on how it helped with understanding programming
+concepts (as well as incorporation into grading).
 
 ---
 
