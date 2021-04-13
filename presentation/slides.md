@@ -150,6 +150,9 @@ CPU cycles on. It would also be easy to track specific types of instructions
 
 ## Hardware vs Software
 
+<!-- .slide: data-background-image="backgrounds/hardware_software.jpg" -->
+<!-- .slide: data-background-opacity="0.2" -->
+
 - Software: Simulation / emulation
  - Easy to deploy
  - Accuracy?
@@ -275,6 +278,9 @@ perform all of this is a challenge, however.
 
 ## gem5
 
+<!-- .slide: data-background-image="backgrounds/gem5_site.png" -->
+<!-- .slide: data-background-opacity="0.1" -->
+
 - Best overall simulator
 - ARM components designed for Cortex-A* cores
 - Develop a simplified, accurate configuration
@@ -313,6 +319,9 @@ but it's a messy text format designed for human inspection).
 
 ## gem5 architecture
 
+<!-- .slide: data-background-image="backgrounds/gem5_complex_bg.png" -->
+<!-- .slide: data-background-opacity="0.1" -->
+
 - Everything is a `SimObject`, e.g. a CPU, memory module or peripheral
  - Each `SimObject` has a Python binding
  - Write a Python script to construct configurations from `SimObject`s
@@ -340,6 +349,9 @@ when evaluation is finished.
 ---
 
 ## Hardware
+
+<!-- .slide: data-background-image="backgrounds/stm32f4_discovery.png" -->
+<!-- .slide: data-background-opacity="0.05" -->
 
 - Accurate simulation is hard, STM32F4xx boards are cheap
 - Open-source build tools (`libopencm3`)
@@ -376,6 +388,9 @@ other instrumentation features). What about tracing?
 
 ## Tracing???
 
+<!-- .slide: data-background-image="backgrounds/tracing.jpg" -->
+<!-- .slide: data-background-opacity="0.1" -->
+
 - Embedded Trace Macrocell (ETM)
  - Precise, detailed and non-invasive
  - Standard part of ARM's "CoreSight Architecture"
@@ -405,6 +420,9 @@ that the Cortex-M4's ETM (the ETM-M4) doesn't support.
 ---
 
 ## Assignment configuration
+
+<!-- .slide: data-background-image="backgrounds/pipelines.png" -->
+<!-- .slide: data-background-opacity="0.4" -->
 
 - Each assignment has specific requirements
 - "Pipeline"-style configuration
@@ -437,6 +455,9 @@ In future it should be possible to work with any other system.
 ---
 
 ## Translating metrics into a grade
+
+<!-- .slide: data-background-image="backgrounds/curve.png" -->
+<!-- .slide: data-background-opacity="0.1" -->
 
 - Most obvious: look at the cycle count
  - An "absolute" value
@@ -472,6 +493,9 @@ method described above.
 ---
 
 ## Informational results
+
+<!-- .slide: data-background-image="backgrounds/heatmap.png" -->
+<!-- .slide: data-background-opacity="0.1" -->
 
 - "Heatmap"
  - Use trace data to count individual instruction metrics
@@ -616,6 +640,9 @@ if args.dump_ranges:
 
 ## Overview
 
+<!-- .slide: data-background-image="backgrounds/hw_deploy_bg.jpg" -->
+<!-- .slide: data-background-opacity="0.2" -->
+
 - Semi-accurate gem5 emulation
  - Access to ARM IP for improvements?
  - Lots of scope for further work
@@ -643,6 +670,9 @@ Submitty integration works!
 
 ## Student demo
 
+<!-- .slide: data-background-image="backgrounds/submitty.png" -->
+<!-- .slide: data-background-opacity="0.1" -->
+
 - Temporary Submitty instance
  - Anonymous submission
  - First 3 assignments
@@ -668,11 +698,16 @@ with 5 Likert scale-based questions on the system.
 
 ## Submissions
 
+<!-- .slide: data-background-image="backgrounds/submitty_submissions.png" -->
+<!-- .slide: data-background-opacity="0.1" -->
+
 - ~50 signups
 - ~35 submissions per assignment
 - It didn't break!
 - Majority of submissions got full marks
  - Grading too conservative?
+
+Note:
 
 After a "guest lecture" and email announcement, about 50 students signed up,
 with approximately 35 submissions for each assignment. The system held up to
@@ -684,9 +719,14 @@ Most of the submissions got full marks - was the grading curve too generous?
 
 ## Survey
 
+<!-- .slide: data-background-image="backgrounds/survey.png" -->
+<!-- .slide: data-background-opacity="0.1" -->
+
 - 19 responses
 - Majority thought the system was useful
 - Less sure on understanding ARM concepts and incorporation into grades
+
+Note:
 
 On the survey: 19 responses were received. Most thought it was very useful,
 although they were less sure on how it helped with understanding programming
