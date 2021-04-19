@@ -86,11 +86,108 @@ The final product will be designed to facilitate grading assignments in the
 modules "Introduction to Computing" (parts I and II), taught to first year
 computer science students. This will include testing against specific
 assignments given in the modules. The system will also need to integrate with
-Submitty, the online grading platform already used in the module.
+Submitty, the online grading platform already used in the module. It's worth
+noting that the Introduction to Computing modules focus on writing programs to
+run on an ARM-based microcontroller. At time of writing, this is specifically an
+STMicroelectronics STM32F4xx-based board (featuring an ARM Cortex-M4 core).
+This project will target the same platform.
 
 \newpage
 
 # Design
+
+There are a number of components required to produce a functioning automated
+grading system for measuring performance of ARM assembly language programs.
+Collectively, these are referred to as "**_Perfgrade_**". This section describes
+the high-level design of the system.
+
+## Overview
+
+Before a final overall system can be realised, there are a number of factors to
+consider when designing _Perfgrade_.
+
+### Metrics
+
+Metrics are the types of raw data that can be collected in order to later
+generate useful information. When measuring performance, the simplest metric to
+consider is a measure of execution time. The most basic form of such a metric is
+to run a timer or "stopwatch" while a program is running. This is often referred
+to as "real time" or "wall-clock time". Even a measurement as crude as
+wall-clock time can be used to directly compare the performance of one program
+to another. If a program takes longer to execute than another, it stands to
+reason that it performs worse.
+
+CPU cycle counts would be a more precise measure of execution time, as the
+(generally) smallest unit of time a programmer can directly control. Although
+CPU features such as pipelining mean that execution of a single instruction does
+not directly correspond to a fixed number of CPU cycles, the there's a close
+association. The opportunity for variance or errors to arise when measuring
+performance using wall time would also increase through the use of operating
+systems and preemptive multitasking. When another task or process needs to
+execute, real time would continue to count up while the code being measured is
+not even running.
+
+Aside from measuring execution time, this project seeks to consider another
+somewhat broad "metric" in _tracing_. Tracing a program involves logging in
+detail each execution of small blocks in a program, often as small as a single
+instruction [@profiling_tracing]. This provides a lot of data that could
+potentially be used to measure performance. In its simplest form, a trace might
+contain a sequential list of memory addresses, each being the value of the
+program counter every time the CPU executed an instruction. With the original
+program, it would be possible to reconstruct the exact path the processor took.
+
+Additional data might be included for each instruction traced, such as the value
+of registers involved in the instruction (the "operands"), or the addresses and
+values of memory accessed (so-called "data tracing"). In rare cases, code
+executed might even by dynamically generated, so it may be necessary to include
+the value of the instruction itself in the trace.
+
+Considering the speed of modern processors (and even microcontrollers, including
+the STM32F4xx-based chip used in this project), tracing can often generate a
+significant amount of data. As such, a simplified statisical method is often
+employed when profiling programs. In an example setup, a profiling tool might
+sample the value of the processor's program counter at an interval. This results
+in a much smaller volume of data, but won't affect accuracy too much in the case
+of a long-running execution of a program at high speed.
+Profiling is a more broad term for recording
+and dynamically analysing execution of blocks of code [@profiling_tracing].
+
+For the purposes of this project, detailed tracing of individual instructions
+makes the most sense, given that the programs being evaluated are hand-written
+in assembly and relatively short.
+
+### Execution and measurement methods
+
+There are two overall methods for executing programs and
+recording some of the metrics described above
+(within the context of this project): Hardware and software. **Hardware** refers
+to the evaluation of a program on a real STM32F4xx-based microcontroller.
+**Software** means evaluation of a program in some kind of emulator or simulator
+that itself runs on a standard PC or server. Note that in general, an *emulator*
+attempts to achieve full functionality of a real system, usually maximising
+performance by designing the system with the host in mind. A *simulator* aims
+to accurately model the internals of a system and is generally less of a
+replacement for real hardware. Some tools combine both, using accurate
+simulation only for the most critical sections of evaluation [@marss].
+
+Which "method" is best for this project is not entirely clear, as both carry
+their own advantages and disadvantages.
+
+Software:
+
+- is generally easy to set up and deploy, from a laptop to a server environment
+- can usually be extended (e.g. to improve accuracy or measurement capabilities)
+- may be lacking in accuracy (popular emulators don't often implement the
+  concept of CPU cycles)
+- can be slow (especially if high accuracy is required)
+
+Hardware:
+
+- is perfectly accurate
+- requires additional physical components for deployment (less flexible)
+- may require complex software infrastructure to manage
+- isn't possible to extend
+- may be difficult or impossible to measure metrics in detail
 
 \newpage
 
