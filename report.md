@@ -6,7 +6,7 @@ subtitle: |
   Final Year Project (CSU44099)
 author:
   - |
-    [Jack O'Sullivan](osullj19@tcd.ie) (#17331147)
+    [Jack O'Sullivan (osullj19@tcd.ie)](osullj19@tcd.ie)
 title-extra: |
   ```{=latex}
   \textsf{Supervisor: Dr. Jonathan Dukes}
@@ -101,7 +101,7 @@ grading system for measuring performance of ARM assembly language programs.
 Collectively, these are referred to as "**_Perfgrade_**". This section describes
 the high-level design of the system.
 
-## Overview
+## Considerations
 
 Before a final overall system can be realised, there are a number of factors to
 consider when designing _Perfgrade_.
@@ -189,9 +189,104 @@ Hardware:
 - isn't possible to extend
 - may be difficult or impossible to measure metrics in detail
 
+### Assignment configuration
+
+Due to the nature of the assignments being graded, consideration needs to be
+made for how to set up each assignment in the system. Not every problem can be
+graded with the same parameters: there will be specific test cases and
+potentially different sections of a program that should be measured. A flexible
+configuration system is therefore required to fulfill these requirements.
+
+Since the system needs to integrate with Submitty, assignment configuration
+will need the ability to generate the output required to publish results in
+the appropriate format. In addition, the system would ideally be flexible
+enough to support another grading platform in future, if needed.
+
+### Grading results
+
+Once execution and collection of metrics through the assignment configuration
+system is completed, there should be two outputs: the performance grade and
+additional "informational results". That is, how well the submission performed
+represented as a score and other (arbitrary) information that doesn't directly
+contribute to the score value.
+
+The most important aspect of this is how to calculate the performance grade or
+score. Given the types of metrics that might be collected, how can a number on
+a scale be generated? A cycle count gives a sort of "absolute" measure of how
+well a program performs, but this will need to be placed on a relative scale.
+It's also worth considering that the relationship between a cycle count and the
+scale may not be simple. An algorithm that runs in $O(n^2)$ time may not be
+that much worse than program running on $O(n)$ in the case of a particular
+assignment.
+
+Any additional outputs that don't factor in to the performance grade need only
+be considered based on their usefulness to both instructors or students. Graphs
+or diagrams might help to show why a submission received a particular grade.
+
+## High-level components
+
+![Main system components](img/high_level.png)
+
+The diagram above shows the primary components in the Perfgrade system, along
+with high-level interactions.
+
+### Submitty
+
+This is the primary driver of the system, along with the only way students can
+interact with Perfgrade. Typically for Introduction to Computing, a student will
+log in to the interface with their college credentials, select an assignment and
+upload a single ARM assembly language source file as their submission. At this
+point Submitty hands the source over to Perfgrade, which handles producing the
+grades and other outputs shown to the student.
+
+### Perfgrade system
+
+The main "glue" in this project, facilitating assignment configuration. As shown
+in the diagram, the student's submission is taken as an input, which is passed
+to other components. Outputs from these are used to produce the results required
+by Submitty. Note the distinct steps which are individually used in Submitty.
+
+Additionally, it can be seen in the diagram that the system makes use of both
+a simulator ("software") and hardware. Both of these options are _almost_
+interchangeable in terms of functionality (as will be discussed later).
+
+### Assembler / Linker
+
+A build process making use of an open-source toolchain (where a submission is
+assembled and linked to some additional code) to produce a working
+firmware for evaluation of a student's program.
+
+### Simulator
+
+The "software" option for evaluation is used to check correctness of a
+submission, loading test cases and writing out the results. It's also used in
+part to evaluate performance.
+
+### Hardware
+
+A real STM32F4xx-based board is used to evaluate performance of the solution.
+
+## Emulator / simulator choice
+
+## Metrics
+
+## Assignment configuration
+
+## Grade calculation
+
+## Informational results
+
 \newpage
 
 # Implementation
+
+## gem5 setup
+
+## Hardware setup
+
+## Unified firmware
+
+## Perfgrade platform
 
 \newpage
 
@@ -199,7 +294,7 @@ Hardware:
 
 \newpage
 
-# Conclusions
+# Results and conclusions
 
 \newpage
 
