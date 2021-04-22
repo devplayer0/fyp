@@ -103,6 +103,33 @@ This project will target the same platform.
 
 ## Hardware
 
+ARM processors are pervasive in mobile devices and increasingly so in
+microcontrollers, displacing 8 bit products. Newer designs in the Cortex-M
+series feature increasingly
+complex cores with more features than the older ARM7 and ARM9.
+
+STMicroelectronics produce a series of microcontrollers (and accompanying
+low-cost development boards) making use of Cortex-M cores called "STM32". The
+STM32F4xx series is based upon a Cortex-M4, which in turn is effectively a
+Cortex-M3 with floating point and DSP instructions [@cortex_m4]. These cores
+implement the ARMv7-M architecture, which use only the Thumb-1 and Thumb-2
+instruction sets [@armv7m].
+
+![STM32F4 Discovery board used in this project\label{fig:stm32f4_discovery}](img/stm32f4_discovery.jpg)
+
+The STM32F4 Discovery board is the target board for Introduction to Computing
+(and is therefore also the target for this project). Figure
+\ref{fig:stm32f4_discovery} shows the board featuring an STM32F407VG
+microcontroller and an integrated ST-LINK/V2 debugger [@stm32f4_discovery]. The
+ST-LINK is a standard debugging component provided by ST that implements ARM's
+Serial Wire Debug (SWD) protocol, which requires only 2 pins - SWDIO and SWCLK
+[@arm_swd].
+
+The STM32F407VG provides a wide range of peripherals - the reference manual
+describing them is over 1700 pages long [@stm32f407]. Use of peripherals is
+relatively limited in Introduction to Computing, with only the standard ARM
+SysTick timer and GPIO's being used.
+
 ## Emulators and simulators
 
 Emulators and simulators are useful tools that can be used, in whole or part, to
@@ -360,9 +387,9 @@ A real STM32F4xx-based board is used to evaluate performance of the solution.
 
 ## Evaluation environment choice
 
-\definecolor{excellent}{RGB}{23,255,46}
-\definecolor{good}{RGB}{255,194,52}
-\definecolor{poor}{RGB}{255,44,45}
+\definecolor{excellent}{RGB}{100,143,255}
+\definecolor{good}{RGB}{254,97,0}
+\definecolor{poor}{RGB}{220,38,127}
 
 **Tool** | **Accuracy** | **Performance** | **Compatibility** | **Instrumentation** | **Difficulty**
  ---:|:--- |:--- |:--- |:--- |:---
