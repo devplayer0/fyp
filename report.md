@@ -398,6 +398,67 @@ Unicorn | \textcolor{poor}{Low} | \textcolor{good}{Medium} | \textcolor{poor}{Lo
 gem5 | \textcolor{good}{Medium / High*} | \textcolor{poor}{Low} | \textcolor{poor}{Low / Medium*} | \textcolor{excellent}{High} | \textcolor{good}{Medium / High*}
 Hardware | \textcolor{excellent}{High} | \textcolor{excellent}{High} | \textcolor{excellent}{High} | \textcolor{good}{Medium / High*} | \textcolor{poor}{High}
 
+The table above shows a comparison of each of the simulators considered for
+this project, along with real hardware. As discussed in the background section,
+both xPack QEMU and Unicorn are based on QEMU, so they are quite similar.
+
+#### Accuracy
+
+Neither of the QEMU-based emulators are very accurate, given that QEMU is
+designed for high performance. In fact, QEMU uses dynamic instruction
+translation to maximise speed, which makes the emulation nothing like the real
+processor being emulated [@qemu_tcg]. gem5 is much more accurate out of the box,
+since it is designed to model complex ARM application cores (Cortex-A series).
+It is given a more ambiguous rating since there aren't any configurations for
+Cortex-M cores provided, but this should be possible to improve with some work.
+
+#### Performance
+
+Both xPack QEMU and Unicorn therefore have
+reasonable performance, although not approaching real ARM hardware of course.
+gem5 is a slower since it tries to accurately model complex architectures (when
+configured to do so at least).
+
+#### Compatibility
+
+Unicorn has very poor compatbility with firmware built to run on an STM32F407,
+given that it only is designed purely to execute pure instructions. xPack QEMU
+is better in this regard, since it aims to emulate real microcontrollers and
+boards. gem5's compatbility out of the box is also relatively poor, again due to
+the lack of pre-made configurations for Cortex-M platforms (along with a lack of
+associated peripheral implementations). With further work, compatibility could
+be greatly improved.
+
+#### Instrumentation
+
+QEMU provides no support for instrumentation at all, and this extends to xPack's
+fork. Unicorn provides a simple to use API, but it doesn't allow for analysis
+beyond granularity of a single instruction. gem5 is set up to collect a lot of
+statistics throughout execution (since that's effectively what it was designed
+for). It also has the ability to generate very detailed trace data and can be
+easily extended to add further instrumentation. ARM defines a number of
+standardised debugging tools, which can (in theory) provide a lot of
+opportunities for analysis. Their use depends on the implementation being present on
+a specific microcontroller however, and can in some cases require additional
+expensive hardware.
+
+#### Difficulty
+
+Both QEMU-based emulators are very easy to use, with QEMU and Unicorn being
+widely used in the open-source community. gem5 is far less common (and has very
+limited documentation). The amount of work required to bring gem5's accuracy
+and compatibility closer to real hardware could also be substantial. Setting up
+some of the more advanced debugging facilities on a real STM32F407 is also
+quite complex.
+
+Overall, *gem5 is really the only choice for a software option*, since neither
+xPack QEMU or Unicorn provide any sort of cycle accurate modelling. This is
+important for the purposes of the project, since the programs being analysed are
+short, hand-written assembly programs. Since real STM32F4-based hardware has
+inherently perfect accuracy and compatibility, high performance and the
+potential for a lot of instrumentation, it's worth exploring this avenue in
+addition to gem5.
+
 ## Metrics
 
 Given the final choice of evaluation environments, the limits on the types of
