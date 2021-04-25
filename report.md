@@ -27,7 +27,7 @@ link-citations: true
 Automated grading of programming assignments is a desirable option to have,
 allowing instructors and teaching assistants to save a significant amount of
 time. Since programming assignments are often based
-upon the implementation of a solution to a single fairly specific problem, they
+upon the implementation of a solution to a single relatively specific problem, they
 seem like a fairly obvious candidate for automation.
 
 The focus when performing automated
@@ -45,7 +45,7 @@ some types of assignments (perhaps implementation of an algorithm in a high-leve
 language), marks for topics like high-performance assembly programming are
 often given for specific instructions and optimisations used.
 
-In order to more appropriately grade assignments in such topics, more
+In order to appropriately grade assignments in such topics, more
 in-depth analysis is required. Usually this comes in the form of a manual marking
 step. Here (in the case of an assembly language assignment), a grader might
 review a student's submission and identify
@@ -104,16 +104,18 @@ This project will target the same platform.
 ## Hardware
 
 ARM processors are pervasive in mobile devices and increasingly so in
-microcontrollers, displacing 8 bit products. Newer designs in the Cortex-M
+microcontrollers, displacing 8-bit products. Newer designs in the Cortex-M
 series feature increasingly
 complex cores with more features than the older ARM7 and ARM9.
 
 STMicroelectronics produce a series of microcontrollers (and accompanying
 low-cost development boards) making use of Cortex-M cores called "STM32". The
 STM32F4xx series is based upon a Cortex-M4, which in turn is effectively a
-Cortex-M3 with floating point and DSP instructions [@cortex_m4]. These cores
+Cortex-M3 with floating point and DSP (Digital Signal Processor)
+instructions [@cortex_m4]. These cores
 implement the ARMv7-M architecture, which use only the Thumb-1 and Thumb-2
-instruction sets [@armv7m].
+instruction sets, and not the older ARM set used my processors like the ARM7
+[@armv7m].
 
 ![STM32F4 Discovery board used in this project\label{fig:stm32f4_discovery}](img/stm32f4_discovery.jpg)
 
@@ -122,13 +124,15 @@ The STM32F4 Discovery board is the target board for Introduction to Computing
 \ref{fig:stm32f4_discovery} shows the board featuring an STM32F407VG
 microcontroller and an integrated ST-LINK/V2 debugger [@stm32f4_discovery]. The
 ST-LINK is a standard debugging component provided by ST that implements ARM's
-Serial Wire Debug (SWD) protocol, which requires only 2 pins - SWDIO and SWCLK
-[@arm_swd].
+Serial Wire Debug (SWD) protocol. This requires only 2 pins - SWDIO and SWCLK,
+providing bidirectional communication and a clock signal respetively [@arm_swd].
 
 The STM32F407VG provides a wide range of peripherals - the reference manual
 describing them is over 1700 pages long [@stm32f407]. Use of peripherals is
 relatively limited in Introduction to Computing, with only the standard ARM
-SysTick timer and GPIO's being used.
+SysTick timer and GPIO's (General Purpose I/O) being used.
+The SysTick timer is a counter that decrements at a configurable real-time
+interval and can generate interrupts [@armv7m].
 
 ## Emulators and simulators
 
@@ -154,7 +158,7 @@ full systems, including peripherals such as hard drives and network interfaces.
 Typically, hardware accelerated virtualisation technology is used to achieve
 near-native performance (e.g. KVM on Linux). QEMU also offers the ability to
 emulate software compiled for other CPU's with user-mode syscall translation.
-It's very flexible, but is most importantly focused on achieving maximum
+It's very flexible, but is mostly focused on achieving maximum
 performance, with the website's tagline as
 "QEMU: the FAST! processor emulator" [@qemu].
 
@@ -275,11 +279,7 @@ Aside from measuring execution time, this project will likely make use of anothe
 somewhat broad "metric" in _tracing_. Tracing a program involves logging in
 detail each execution of small blocks in a program, often as small as a single
 instruction [@profiling_tracing]. This provides a lot of data that could
-potentially be used to measure performance. In its simplest form, a trace might
-contain a sequential list of memory addresses, each being the value of the
-program counter every time the CPU executed an instruction. With the original
-program, it would be possible to reconstruct the exact path the processor took.
-
+potentially be used to measure performance.
 ### Execution and measurement methods
 
 There are two overall methods for executing programs and
@@ -305,13 +305,13 @@ Hardware:
 - is perfectly accurate
 - requires additional physical components for deployment (less flexible)
 - may require complex software infrastructure to manage
-- isn't possible to extend
+- isn't extensible
 - may be difficult or impossible to measure metrics in detail
 
 ### Assignment configuration
 
 Due to the nature of the assignments being graded, consideration needs to be
-made for how to set up each assignment in the system. Not every problem can be
+taken for how to set up each assignment in the system. Not every problem can be
 graded with the same parameters: there will be specific test cases and
 potentially different sections of a program that should be measured. A flexible
 configuration system is therefore required to fulfill these requirements.
@@ -344,9 +344,9 @@ or diagrams might help to show why a submission received a particular grade.
 
 ## High-level components
 
-![Main system components](img/high_level.jpg)
+![Main system components\label{fig:high_level}](img/high_level.jpg)
 
-The diagram above shows the primary components in the Perfgrade system, along
+Figure \ref{high_level} shows the primary components in the Perfgrade system, along
 with high-level interactions.
 
 ### Submitty
@@ -421,8 +421,8 @@ configured to do so at least).
 
 #### Compatibility
 
-Unicorn has very poor compatbility with firmware built to run on an STM32F407,
-given that it only is designed purely to execute pure instructions. xPack QEMU
+Unicorn has very poor compatibility with firmware built to run on an STM32F407,
+given that it is designed to only execute pure instructions. xPack QEMU
 is better in this regard, since it aims to emulate real microcontrollers and
 boards. gem5's compatbility out of the box is also relatively poor, again due to
 the lack of pre-made configurations for Cortex-M platforms (along with a lack of
@@ -454,9 +454,9 @@ quite complex.
 Overall, *gem5 is really the only choice for a software option*, since neither
 xPack QEMU or Unicorn provide any sort of cycle accurate modelling. This is
 important for the purposes of the project, since the programs being analysed are
-short, hand-written assembly programs. Since real STM32F4-based hardware has
+short, hand-written assembly programs. As real STM32F4-based hardware has
 inherently perfect accuracy and compatibility, high performance and the
-potential for a lot of instrumentation, it's worth exploring this avenue in
+potential for a lot of instrumentation, it is worth exploring this avenue in
 addition to gem5.
 
 ## Metrics
@@ -487,10 +487,7 @@ not even running.
 
 ### Tracing
 
-Tracing a program involves logging in
-detail each execution of small blocks in a program, often as small as a single
-instruction [@profiling_tracing]. This provides a lot of data that could
-potentially be used to measure performance. In its simplest form, a trace might
+In its simplest form, a trace might
 contain a sequential list of memory addresses, each being the value of the
 program counter every time the CPU executed an instruction. With the original
 program, it would be possible to reconstruct the exact path the processor took.
@@ -516,6 +513,8 @@ makes the most sense, given that the programs being evaluated are hand-written
 in assembly and relatively short.
 
 ## Assignment configuration
+
+
 
 ## Grade calculation
 
