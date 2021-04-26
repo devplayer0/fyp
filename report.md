@@ -280,6 +280,7 @@ somewhat broad "metric" in _tracing_. Tracing a program involves logging in
 detail each execution of small blocks in a program, often as small as a single
 instruction [@profiling_tracing]. This provides a lot of data that could
 potentially be used to measure performance.
+
 ### Execution and measurement methods
 
 There are two overall methods for executing programs and
@@ -346,8 +347,8 @@ or diagrams might help to show why a submission received a particular grade.
 
 ![Main system components\label{fig:high_level}](img/high_level.jpg)
 
-Figure \ref{high_level} shows the primary components in the Perfgrade system, along
-with high-level interactions.
+Figure \ref{fig:high_level} shows the primary components in the Perfgrade
+system, along with high-level interactions.
 
 ### Submitty
 
@@ -514,7 +515,120 @@ in assembly and relatively short.
 
 ## Assignment configuration
 
+In order to accommodate for the specific needs of each assignment, a flexible
+configuration system is needed (as previously discussed). Since assignments
+will likely consist of a set of common steps with slightly differing setups,
+a design incorporating composable "blocks" was decided upon. A
+"block" might execute some code in simulator, calculate a grade or generate
+Submitty-compatible output. These could be arranged in many configurations, each
+with specific options such as the value of test data to use.
 
+There are a number of possible design patterns that could fulfill this idea. One
+might be to follow gem5's Python configuration philosophy - write a script
+which instantiates and wires up the whole system. However, since assignments
+will likely follow a similar set up and pattern of performing one action and
+following it up with another that uses the results of the previous, this is
+probably unnecessary and might lead to a lot of boilerplate code being needed
+for each assignment.
+
+![Blender's node editor for materials\label{fig:blender_nodes}](img/blender_nodes.png)
+
+One model that might be possible is to provide a "node editor". Figure
+\ref{fig:blender_nodes} shows an example of this user interface design from
+Blender, the free and open-source 3D graphics package [@blender_nodes]. Here,
+it's possible to connect a series of "nodes", each of which has a number of
+adjustable settings. The combination of different nodes' outputs to other nodes'
+inputs can produce vastly different resulting materials ("Material Output" is
+the final output node). The visual interface also makes it easier for users
+unfamiliar with scripting or programming.
+
+While this pattern might work well for a graphics application, the benefits of
+the user-friendly design might not be worth the extra work required to implement
+a fully featured graphical interface, especially since the user of the
+assignment configuration system will be an instructor for a computer science
+course.
+
+DevOps is a popular set of software development practices that can be summarised
+as the combination of DEVelopment and OPerations [@devops]. Although flexible
+and sometimes loosely defined, there are often Continuous Integration and
+Continuous Deployment stages (together referred to CI/CD). Here, changes to
+software are automatically built and tested (CI) before being automatically
+deployed (CD).
+
+The manner in which software is built and tested varies
+significantly, but the inputs and outputs are usually similar. Code to be
+tested exists in a version control system (VCS), such as Git. A CI/CD tool pulls
+this code and uses some kind of build tool to produce a result that can be
+evaluated (e.g. a binary executable). Following this, a test suite might be used
+to ensure the software behaves correctly. If the tests pass, a deployment tool
+can then be used to make the changes available to a wide audience, such as a web
+application.
+
+``` {.yaml caption="GitHub Actions pipeline example" label="lst:github-actions"}
+name: Build and deploy presentation
+
+on:
+  push:
+    branches: [master]
+    paths: ['presentation/**']
+
+jobs:
+  build_deploy:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install reveal-md
+        run: sudo yarn global add reveal-md
+
+      - name: Build presentation
+        run: |
+          cd presentation/
+          reveal-md slides.md --css style.css --assets-dir assets --static _site --static-dirs backgrounds
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@4.1.1
+        with:
+          branch: gh-pages
+          folder: presentation/_site
+```
+
+Listing \ref{lst:github-actions} is an example of a CI/CD pipeline, written
+for GitHub Actions. The purpose of this pipeline (or "workflow" as it is
+referred to on the GitHub Actions platform) is to "build" and deploy a
+the Reveal.js-based presentation for this project to GitHub Pages. Reveal.js is
+"an open source HTML presentation framework", allowing for the creation of
+slide presentations written in HTML [@revealjs]. GitHub Pages is "a static site
+hosting service that takes HTML, CSS, and JavaScript files straight from a
+repository on GitHub, optionally runs the files through a build process, and
+publishes a website." [@github_pages].
+
+In the given workflow, the conditions that must be met for the run to be
+triggered are laid out (on Git push to the `master` branch and when files under
+the `presentation` directory are modified). After this, a number of "steps" in
+the workflow process are defined. The details of exactly what each step does is
+unimportant, but each one performs some task (via a shell script or an external
+GitHub action created by another GitHub user) that modifies the environment,
+whether that means installing dependencies or deploying changes to a remote
+system. The full extent of the syntax for GitHub Actions is defined in the
+official documentation [@github_actions]. Note that the workflow is written in
+YAML (YAML Ain't Markup Language), a self-described "human friendly data
+serialization standard for all programming languages" [@yaml]. Often used as a
+configuration file format, YAML can be translated into popular data exchange
+formats such as JSON, but is easier to write by hand.
+
+It could be argued the problem solved by CI/CD systems is analagous
+to configuration of assignments to be automatically graded. There are a number
+of steps to be taken, each of which may take a number of inputs and produce
+outputs (working in a temporary environment). An example step in the context of
+an automatically graded assignment might be the compilation of a student's
+submission or calculation of a grade. Commonly used steps could be implemented
+in the platform (with configurable options) to reduce boilerplate. For increased
+flexibility, embedded scripting capabilities could be provided.
+
+The "pipeline" approach was decided upon for the implementation of the
+assignment configuration in _Perfgrade_, for its balance of flexibility and
+relative ease of use for instructors.
 
 ## Grade calculation
 
