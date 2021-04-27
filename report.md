@@ -101,6 +101,49 @@ This project will target the same platform.
 
 ## Prior work
 
+Automated grading is not a new concept, and there is a relatively significant
+body of published work on the topic.
+
+### The Online Judge
+
+_On automated grading of programming assignments in an academic institution_
+describes a system for automated grading, initially used in 1999 for a third
+year programming course at the
+School of Computing in the National University of Singapore [@online_judge].
+
+The Online Judge was a classic example of so-called "black box" grading. As
+described by Cheang _et al_, students' code would be run against sample inputs
+which would be compared to known good outputs. A verdict issued to students
+would state which test cases passed and failed. The only "dynamic" element in
+the testing process was an additional failure state if the code exceeded a
+pre-determined execution time or memory limit.
+
+Despite the limited scope, The Online Judge was said to be "invaluable in the
+conducting of the CS3233 course", a module preparing students for a programming
+competition. The Online Judge was later modified for use in a first year
+data structures and algorithms module. The use of even the most rudimentary
+systems is clearly a significant aid to grading.
+
+### Submitty
+
+_Submitty: An Open Source, Highly-Configurable Platform for Grading of
+Programming Assignments_ [@submitty] presents a more modern automated grading
+platform. Initially released in 2014 [@submitty_initial_release], Submitty
+provides an open-source, self-hostable platform for students to submit code
+(in a variety of formats) and an automated grading system with support for many
+programming languages (e.g. Python, C/C++, Java, etc.), along with many other
+supplementary features [@submitty_features].
+
+Submitty, while making use of a user interface much more in line with those
+expected of a 2010's software product, is still mostly designed for use with
+functional autograding. However, due to it being an open and extensible
+platform, especially on account of its pluggable configurable assignment syntax,
+can (and has been) extended to support more advanced automated grading
+techniques, such as the use of static analysis, memory debugging and code
+coverage tools [@submitty].
+
+### ...
+
 ## Hardware
 
 ARM processors are pervasive in mobile devices and increasingly so in
