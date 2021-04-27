@@ -564,7 +564,7 @@ to ensure the software behaves correctly. If the tests pass, a deployment tool
 can then be used to make the changes available to a wide audience, such as a web
 application.
 
-``` {.yaml caption="GitHub Actions pipeline example" label="lst:github-actions"}
+``` {.yaml label="lst:github-actions" caption="GitHub Actions pipeline example"}
 name: Build and deploy presentation
 
 on:
@@ -638,13 +638,291 @@ relative ease of use for instructors.
 
 # Implementation
 
-## gem5 setup
+## gem5 evaluation
 
-## Hardware setup
+Evaluating student submissions with the gem5 simulator was the initial approach
+attempted for this project.
+
+## Hardware evaluation
+
+### Tracing
+
+Hardware tracing was attempted for this project, although this avenue ultimately
+proved impractical.
 
 ## Unified firmware
 
 ## Perfgrade platform
+
+Perfgrade is the implementation of the aforementioned "glue" in this project,
+providing a pipeline-based system to configure automated assignment evaluation
+and grading. The system is written in Python, for ease of development and to
+allow for easy scripting capabilities within pipeline definitions.
+
+The source for the application is in the `app/` subdirectory, with the structure
+following that of a standard Python library. `app/perfgrade/` contains the code
+for all of the classes described in this section.
+
+### Pipeline configuration format
+
+``` {.yaml label="lst:perfgrade-simple" caption="Simple Perfgrade pipeline example"}
+steps:
+  - id: build
+    type: build
+    description: Build test code
+    input:
+      opencm3: /opt/libopencm3
+      uut: arraymove.s
+      harness: arraymove_harness.s
+      defines:
+        ARR_SPACE: !expr 1024 * 4
+
+  - type: copy
+    description: Copy build results
+    input:
+      - src: !expr build.elf
+        dst: perfgrade.elf
+      - src: !expr build.rom
+        dst: perfgrade.bin
+```
+
+Listing \ref{lst:perfgrade-simple} is an example of a Perfgrade
+configuration file, demonstrating the basic structure of a pipeline definition.
+The outermost object contains only one key: `steps`. This is an array of step
+definitions. Each step has a number of attributes:
+
+- `id`: An optional shorthand identifier for the step, which allows its
+  outputs to be referenced in future steps (as `<id>.<output_prop>`).
+- `type`: The type of step being defined. A number of pre-defined step types are
+  implemented in the Python application to perform a wide range of tasks.
+- `description`: An optional human-readable description of the step (shown in
+  logs)
+- `input`: Type-specific input for the step. This usually contains options and
+  references the outputs from previous steps to set up how a step will run.
+
+An additional element seen in Listing \ref{lst:perfgrade-simple} is `!expr`,
+which comes after the YAML key but before its value. A lesser-known feature,
+tags indicate the underlying type of a value (it is always implied but can be
+specified for any node) [@yaml_spec]. The `expr` tag is picked up by Perfgrade
+and indicates that the value corresponding to the given key should be
+evaluated as a Python expression. For example, `src: !expr build.elf` in listing
+\ref{lst:perfgrade-simple} means that the value of `src` will be dynamically
+evaluated to be the `elf` output from the `build` step. `!expr` tags can be used
+for any input value (including nested ones), as well as the `description`.
+
+### Step implementation
+
+Since the Perfgrade platform is written in Python, a language object-oriented
+features, each of the step `type`s is implemented as a class inheriting from a
+base `Step`. This class defines a number of methods and defines some common
+behaviour, with the `run()` method needing to be implemented by all subclasses
+to provide an actual action to be taken.
+
+Notably, `Step` provides `_eval_input()`, which is an internal method that
+traverses the `input` tree and evaluates any `!expr`-tagged values as
+expressions before `run()` is called to execute the step. The `output` instance
+property should be set by the end of `run()` to provide outputs for other steps
+to use. Instance property `input` can be accessed by `run()` to read the
+processed input tree (with `!expr` values evaluated).
+
+``` {.python label="lst:perfgrade-copy" caption="Perfgrade `Copy` step definition"}
+class Copy(Step):
+    description = 'Copy files'
+
+    def run(self, ctx: Mapping):
+        input_ = self.input
+        if not isinstance(self.input, list):
+            input_ = [self.input]
+
+        for i in input_:
+            if os.path.isdir(i['src']):
+                shutil.copytree(i['src'], i['dst'])
+            else:
+                shutil.copy(i['src'], i['dst'])
+```
+
+Listing \ref{lst:perfgrade-copy} shows the complete implementation of the `copy`
+step type, a simple step which allows one or more files to be copied (using the
+standard library `shutil` functions). Although this step does not provide any
+outputs, it references elements of the input array, each of which should have a
+`src` file/directory and a `dst` file/directory. The class-level property
+`description` provides a default value, used in log output if none is provided
+in the configuration file. Listing \ref{lst:perfgrade-simple} shows an example
+use of the `copy` step.
+
+``` {.python label="lst:perfgrade-passthrough" caption="Perfgrade `Passthrough` step definition"}
+class Passthrough(Step):
+    description = 'Pass evaluated input through to output'
+
+    def run(self, ctx: Mapping):
+        self.output = self.input
+```
+
+Listing \ref{lst:perfgrade-passthrough} shows an even further simplified step
+definition. At first glance, this appears to do nothing. However, recall that
+`self.input` refers to the processed input tree, with all expressions evaluated.
+This provides a convenient way to define via YAML a set of values to be
+referenced in later steps, with the added capability to add Python expressions
+at any level in the tree.
+
+
+### Available step types
+
+#### `exec`
+
+This step type takes a Python program as input, and simply evaluates it. This is
+effectively a long-form version of an inline expression. While an expression
+has limits and must evaluate to a value, the `exec` step uses the Python
+standard `exec()` builtin to run code as if it were a complete script. This step
+type is akin to the `run:` value in a GitHub Actions step.
+
+_Inputs:_
+
+The input value is a string, which is parsed as a Python script. Use of the
+YAML literal block indicator is recommended [@yaml_multiline].
+
+_Outputs:_
+
+None (`self.output` can be set by the script to provide an output)
+
+_Example:_
+
+```yaml
+id: test
+type: exec
+input: |
+  from zipfile import ZipFile
+
+  self.output = []
+  with ZipFile('spam.zip') as myzip:
+      with myzip.open('eggs.txt') as myfile:
+          for line in myfile:
+              self.output.append(line)
+```
+
+#### `passthrough`
+
+As previously described, this step effectively does "nothing", passing its input
+(_with evaluation of nested expressions_) as the output.
+
+_Inputs:_
+
+An arbitrary YAML tree.
+
+_Outputs:_
+
+The evaluated input.
+
+_Example:_
+
+```yaml
+id: values
+type: passthrough
+input:
+  stuff:
+    foo: bar
+    qwe: 123
+  a:
+    b: !expr 5 * 4
+```
+
+#### `copy`
+
+Copies files / directories.
+
+_Inputs:_
+
+An array of objects with `src` and `dst` values. A single object (without being
+wrapped in an array) can also be provided.
+
+_Outputs:_
+
+None.
+
+_Example:_
+
+```yaml
+type: copy
+input:
+  - src: /etc/hosts
+    dst: /tmp/hosts
+  - src: /usr/share/man
+    dst: /tmp/man
+```
+
+#### `build`
+
+Builds a universal firmware (see the dedicated section for further details).
+
+_Inputs:_
+
+- `opencm3`: Path to pre-built `libopencm3` tree
+- `uut`: Path to the "unit under test" assembly source file
+- `harness`: Path to an optional test harness (`.c` for C or `.s`/`.S` for
+   assembly)
+- `defines`: Optional array of preprocessor defines (key is the name of the
+   define)
+- `rom`: Whether or not to produce a raw firmware from the final ELF (defaults
+   to `True`)
+
+_Outputs:_
+
+- `dir`: Path to the temporary build directory
+- `uut`: Path of the copied uut (relative to the temporary build directory)
+- `elf`: Absolute path to the final ELF
+- `rom`: Absolute path to the final raw firmware (if requested)
+
+**Note:** The resulting ELF and optional ROM are stored in a temporary
+directory which will be deleted upon Perfgrade's exit. Consider using a `copy`
+step if they are required after a pipeline has finished executing.
+
+_Example:_
+
+```
+id: build
+type: build
+input:
+  opencm3: /opt/libopencm3
+  uut: arraymove.s
+  harness: arraymove_harness.s
+  defines:
+    ARR_SPACE: !expr 1024 * 4
+```
+
+#### `symtab`
+
+#### `evaluate`
+
+#### `load_traces`
+
+#### `augment_traces`
+
+#### `cycle_count`
+
+#### `heatmap`
+
+#### `curve_guess`
+
+#### `bucket_grade`
+
+#### `diff`
+
+#### `pipeline`
+
+#### `mapped`
+
+#### `include`
+
+### Setup
+
+Perfgrade can be installed in a manner similar to any other Python package, but
+requires some additional work to use evaluation features (both `gem5` and
+`hardware`). A Docker image is also provided (with these additional dependencies
+pre-installed).
+
+...
+
+## Submitty integration
 
 \newpage
 
