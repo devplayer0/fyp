@@ -547,10 +547,11 @@ graded with the same parameters: there will be specific test cases and
 potentially different sections of a program that should be measured. A flexible
 configuration system is therefore required to fulfil these requirements.
 
-Since the system needs to integrate with Submitty, assignment configuration
-will need the ability to generate the output required to publish results in
-the appropriate format. In addition, the system would ideally be flexible
-enough to support another grading platform in future, if needed.
+An important factor to consider will be the ability to accept submissions and
+generate results in an appropriate format. Since creating an online grading
+interface is not in the scope of this project, the system will need to integrate
+with an existing platform. In addition, this integration would ideally be
+flexible enough to support another grading platform in future, if needed.
 
 ### Grading results
 
@@ -575,26 +576,27 @@ or diagrams might help to show why a submission received a particular grade.
 
 ## High-level components
 
-![Main system components\label{fig:high_level}](img/high_level.jpg)
+![Main system components\label{fig:high_level}](img/high_level_generic.jpg)
 
 Figure \ref{fig:high_level} shows the primary components in the Perfgrade
 system, along with high-level interactions.
 
-### Submitty
+### Autograding platform
 
 This is the primary driver of the system, along with the only way students can
-interact with Perfgrade. Typically for Introduction to Computing, a student will
+interact with Perfgrade. Typically, a student will
 log in to the interface with their college credentials, select an assignment and
 upload a single ARM assembly language source file as their submission. At this
-point Submitty hands the source over to Perfgrade, which handles producing the
-grades and other outputs shown to the student.
+point the platform hands the source over to Perfgrade, which handles producing
+the grades and other outputs shown to the student.
 
 ### Perfgrade system
 
 The main "glue" in this project, facilitating assignment configuration. As shown
 in the diagram, the student's submission is taken as an input, which is passed
 to other components. Outputs from these are used to produce the results required
-by Submitty. Note the distinct steps which are individually used in Submitty.
+by the autograding platform. Note the distinct steps which are referenced by the
+platform.
 
 Additionally, it can be seen in the diagram that the system makes use of both
 a simulator ("software") and hardware. Both of these options are _almost_
@@ -788,7 +790,152 @@ relative ease of use for instructors.
 
 ## Grade calculation
 
+It's important to establish the method(s) through which an actual grade will be
+calculated from metrics collected during submission evaluation. For the purposes
+of this project, the final performance grade will be derived solely from the
+execution time of a student's program. More specifically, "execution time" is
+the number of CPU cycles taken to complete the program, as previously alluded
+to. In order to generate the most accurate (or "fairest") grade, an iterative
+approach was taken to refine grade value calculation.
+
+```{.nasm label="lst:asm-loops" caption="ARM assembly grade testing program"}
+.syntax unified
+.thumb
+.section .text
+
+.global test
+test:
+  // r0 contains the loop count
+  mov r1, #0
+.Lloop:
+  cmp r1, r0
+  beq .Leloop
+
+  mov r2, #0
+.Lloop2:
+  cmp r2, r0
+  beq .Leloop2
+
+#  mov r3, #0
+#.Lloop3:
+#  cmp r3, r0
+#  beq .Leloop3
+#  add r3, #1
+#  b .Lloop3
+#.Leloop3:
+
+  add r2, #1
+  b .Lloop2
+.Leloop2:
+
+  add r1, #1
+  b .Lloop
+.Leloop:
+  bx lr
+```
+
+Listing \ref{lst:asm-loops} shows the test program that was used to compare the
+results of different calculation methods. The program represents a series of up
+to 3 nested `for`-loops, simulating different classes of performance for a
+problem. The procedure for testing is to put a value in `r0` and call `test()`.
+The number of iterations will then be $n$, $n^2$ or $n^3$, depending on how many
+blocks are commented out. In listing \ref{lst:asm-loops} the value will be
+$n^2$, since the innermost loop is commented out.
+
+### Raw cycle count
+
+Given the previously discussed "absolute" nature of a cycle count (where a
+"relative" value is needed to compare solutions and place them on a scale),
+little time was spent considering a raw cycle count value for grading.
+
+### Bucket grading
+
+The idea of so-called "bucket grading" is to place a cycle count value of one
+of a number possible "buckets". Then, using a mapping function (in the
+mathematical sense), a relative grade value can be calculated. Having a specific
+mapping function for each bucket allows different "classes" of performance to
+be graded on different scales.
+
+![Sketch of bucket grading graph\label{fig:bucket_grading_sketch}](img/bucket_grading_sketch.jpg)
+
+Figure \ref{fig:bucket_grading_sketch} illustrates roughly how bucket grading
+might work. The X-axis represents any cycle count measured from a submission,
+with the Y-axis showing the associated grade. The vertical lines
+represent a "buckets", with a distinct cycle-grade curve for each. The beginning
+and end of each bucket could be defined based on experimentally measured cycle
+counts for different classes of performance. Anything left of the leftmost
+line (the lowest possible cycle counts) would result in a performance grade of
+100%. Anything to right of the line function for the rightmost bucket would give
+0%.
+
+### log-log plot
+
+"Computational complexity" refers to the general processing resources required
+to run an algorithm. Worst-case performance is often denoted using big-O
+notation [@complexity_analysis]. In $O(n^k)$, estimating the value of $k$ could
+prove a useful metric to grade an assignment with. Performing this estimation
+is made relatively easy through the use of a log-log plot. The slope of a
+function $t = n^k$ plotted in log-log is equal to the value of $k$
+[@loglog_complexity].
+
+By evaluating a student's program a number of times with various input sizes
+(i.e. values for $n$), a log-log plot of $n$ vs the number of cycles could be
+generated. The slope of this graph could then be easily measured, giving an
+approximation for $k$ in $O(n^k)$. This value of $k$ could be very easily used
+to generate a grade.
+
+Overall, a combination of the bucket grading and log-log methods seems to make
+the most sense. Here, the value on the X-axis for bucket grading can simply
+be swapped for the estimate of $k$, with buckets and curves being adjusted
+accordingly. This has the benefit of incorporating a number of evaluations and
+using a more easily digestable input value to a bucket's grading function.
+
 ## Informational results
+
+Aside from the numerical grade given assigned to a given submission, other
+results that might inform instructors or students could be quite useful. A few
+visual outputs were devised for this project.
+
+### Grade curve
+
+![Augmented grade curve sketch\label{fig:grade_curve_sketch}](img/grade_curve_sketch.jpg)
+
+The grade curve is essentially a very slight expansion and real implementation
+of the sketch shown in figure \ref{fig:bucket_grading_sketch}. Figure
+\ref{fig:grade_curve_sketch} shows a sketch of this graph. The only changes
+are the swapping of the X-axis label from "Cycles" to "log-log slope" and the
+addition of a "Your grade" dot. The X-axis has been updated in accordance with
+the combined grade calculation method described in the previous section and the
+red dot shows the location on the curve of a sample submission. This allows
+students to see what kind of improved grade they could get for a reduction in
+computational complexity.
+
+### Performance curve
+
+![Performance curve sketch\label{fig:performance_curve_sketch}](img/performance_curve_sketch.jpg)
+
+Figure \ref{fig:performance_curve_sketch} shows what is essentially a
+visualisation of the data collected to produce the log-log plot. However, this
+graph plots input size directly against cycle count, allowing the type of
+function to be inferred. Curve-fitting could also be applied to guess the class
+of function and draw the fitted function through the points of actual data. This
+can show instructors and students how their algorithm scales directly with the
+size of the input.
+
+### Heatmap
+
+!["Heatmap" sketch\label{fig:heatmap_sketch}](img/heatmap_sketch.png)
+
+A heatmap typically refers to the representation of a matrix on a grid with
+colour shading used to represent the value of a cell [@heatmap]. Figure
+\ref{fig:heatmap_sketch} shows a sort of "1D" variant of this applied to the CPU
+instructions from the loop program (listing \ref{lst:asm-loops}). The "heat" of
+a line indicates how much of the program's total execution time (cycles) was
+taken up by an instruction on that line. The loop program demonstrates this
+well, showing how the nested loop instructions are progressively "hotter". The
+"cold" gaps are lines that don't actually generate instructions when assembled,
+such as labels or empty space. Instructors and students can use this to identify
+at a glance which parts of a program are taking up the most CPU time.
 
 \newpage
 
