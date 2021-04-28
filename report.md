@@ -37,19 +37,21 @@ are tested against a corresponding pre-determined set of correct ones [@online_j
 This is usually as simple as passing a list of items as command line arguments
 or strings on standard input and parsing the results from standard output.
 Often, an additional set of "hidden test cases" (inputs which the student can
-never obtain direct access to) is used to prevent hardcoding of answers [@online_judge].
+never obtain direct access to) is used to prevent hardcoding of answers
+[@online_judge].
 
 Aside from checking for hardcoded outputs, the quality of a submission is
-rarely tested. While this is less important for
+rarely tested. "Quality" in this context refers to aspects of the code beyond
+whether or not it produces correct results, such as maintainability or
+performance. While this is less important for
 some types of assignments (perhaps implementation of an algorithm in a high-level
 language), marks for topics like high-performance assembly programming are
 often given for specific instructions and optimisations used.
 
 In order to appropriately grade assignments in such topics, more
 in-depth analysis is required. Usually this comes in the form of a manual marking
-step. Here (in the case of an assembly language assignment), a grader might
-review a student's submission and identify
-specific issues, such as the use of extraneous CPU instructions or poor overall
+step. Here, a grader might review a student's submission and identify
+specific issues, such as the use of extraneous statements or poor overall
 program structure.
 
 The mechanism through which this analysis might be automated is much less
@@ -60,17 +62,34 @@ In addition to the benefits for instructors, students can also take advantage of
 an automated grading system. With manual grading, there is a significant delay
 between submission and receiving feedback for an assignment. Since
 an automated system can perform its grading in a matter of minutes or seconds,
-students can learn more efficiently. They might be able to improve a single
-assignment before final submission or simply be prepared for future assignments
-more quickly.
+learning is more efficient. It has been shown that students can even
+be more willing to put more time and consideration into their work before final
+submission with the aid of immediate feedback [@instant_feedback].
 
-\newpage
+## Context
+
+Introduction to Computing (parts I and II) is taught to first year computer
+science students in order to introduce them to fundamental concepts in
+computers. Topics include the manner in which CPU executes programs,
+representing information in binary form and showing the relationship between
+high-level programming concepts and machine instructions [@intro_computing].
+
+This project will explore automated grading within the specific context of these
+modules. The advantage of this approach is the availability of a large set of
+sample programs to test, along with a class of students that could potentially
+evaluate an improved automated grading system. Both modules already make use of
+functional automated grading, making use of Submitty, a free and open-source
+automated grading platform.
+
+Since ARM assembly programming is the primary driver of learning in Introduction
+to Computing, assignments written in ARM assembly will be the target of the
+project.
 
 ## Goals
 
-This project seeks to develop an automated grading system which focuses
-specifically on measuring performance (at runtime) of ARM assembly language
-programs. As previously mentioned, there are a number of potential aspects for
+The goal of this project is to develop an automated grading system which focuses
+specifically on measuring performance (at runtime) of programs. As
+previously mentioned, there are a number of potential aspects for
 improving automation around programming assignment grading. By choosing a
 specific type of assignment and domain for improvement, a more in-depth system
 can be realised.
@@ -85,17 +104,34 @@ difficult to anaylse, given that assembly programs have very little structure.
 Dynamic or runtime performance analysis is also used over static analysis for
 the same reason.
 
-The final product will be designed to facilitate grading assignments in the
-modules "Introduction to Computing" (parts I and II), taught to first year
-computer science students. This will include testing against specific
-assignments given in the modules. The system will also need to integrate with
-Submitty, the online grading platform already used in the module. It's worth
+Performance is also not trivial to analyse, as the performance of a program is
+not as simple as running a stopwatch until a program finishes. Factors such as
+the platform used and interference from other programs can have an impact on
+such a measurement, for a start. It can also be difficult to compare two
+programs solely based on their run time, even if perfectly accurate. A program
+that runs twice as slowly as another might not be twice as poorly written.
+
+The final product should be able to facilitate grading assignments in
+Introduction to Computing. This will include testing against specific
+assignments given in the modules. In order to work in the real world, the system
+will also need to integrate with Submitty. It's worth
 noting that the Introduction to Computing modules focus on writing programs to
-run on an ARM-based microcontroller. At time of writing, this is specifically an
+run on a microcontroller. At time of writing, this is specifically an
 STMicroelectronics STM32F4xx-based board (featuring an ARM Cortex-M4 core).
 This project will target the same platform.
 
-\newpage
+## Methodology
+
+The overall strategy to develop the best final system is to break down each
+high-level component in the system into smaller pieces and find the best
+solution to each of the more manageable chunks. One of the most obvious examples
+of this in the context of this project is the method of program evaluation.
+
+Broken out of the overall automated grading system, this part will be concerned
+with the actual execution of submissions, collecting metrics along the way. It's
+not immediately obvious which of a number of potential methods will prove to be
+the best for the project. A combination or ability to choose between a number of
+different options might be the ultimate answer.
 
 # Background
 
@@ -106,12 +142,10 @@ body of published work on the topic.
 
 ### The Online Judge
 
-_On automated grading of programming assignments in an academic institution_
-describes a system for automated grading, initially used in 1999 for a third
-year programming course at the
+The Online Judge was an automated grading system initially used in 1999 for a
+third year programming course at the
 School of Computing in the National University of Singapore [@online_judge].
-
-The Online Judge was a classic example of so-called "black box" grading. As
+A classic example of so-called "black box" grading is presented. As
 described by Cheang _et al_, students' code would be run against sample inputs
 which would be compared to known good outputs. A verdict issued to students
 would state which test cases passed and failed. The only "dynamic" element in
@@ -124,11 +158,41 @@ competition. The Online Judge was later modified for use in a first year
 data structures and algorithms module. The use of even the most rudimentary
 systems is clearly a significant aid to grading.
 
+### Comparison of automated grading strategies
+
+A number strategies for automated grading of assignments have been explored and
+compared. However, most of these strategies are simply variations of functional
+or black box approaches. Simple output comparison, more complex output analysis,
+unit testing and reflection (where applicable) have all been compared in their
+effectiveness. Automating grading using other techniques might only be mentioned
+in passing or implemented in a limited manner, such as checking formatting and
+for elements such as comments [@testing_strategies].
+
+### EmbedInsight
+
+EmbedInsight was created to automate embedded systems courses, including
+Massively Open Online Courses (MOOCs). The key goal of this system is to
+test complex assignments that make use of real-world hardware while aiming
+to scale out to courses with potentially thousands of participants
+[@embedinsight]. There is little exploration of advanced submission analysis.
+In fact, the term "black box" is explicitly mentioned as a benefit of the
+system, allowing EmbeddedInsight to "support different types of hardware and
+software tools without modifying student programs".
+
+Li _et al_ evaluate student submissions in hardware, making use of two separate
+microcontroller boards. One runs the student's code (the "Device Under Test" or
+DUT), while another is used to check any physical outputs ("Hardware Engine").
+The example given is a PWM (Pulse Width Modulation) assignment, where the
+hardware engine checks the signal generated by the DUT.
+Interestingly, the system makes use of very similar hardware to that of
+Introduction to Computing, with an STM32F7-based board for the DUT and an
+STM32F4 Discovery board (identical to that used in Introduction to Computing) as
+the hardware engine.
+
 ### Submitty
 
-_Submitty: An Open Source, Highly-Configurable Platform for Grading of
-Programming Assignments_ [@submitty] presents a more modern automated grading
-platform. Initially released in 2014 [@submitty_initial_release], Submitty
+Submitty presents a more modern automated grading platform [@submitty].
+Initially released in 2014 [@submitty_initial_release], Submitty
 provides an open-source, self-hostable platform for students to submit code
 (in a variety of formats) and an automated grading system with support for many
 programming languages (e.g. Python, C/C++, Java, etc.), along with many other
@@ -136,20 +200,65 @@ supplementary features [@submitty_features].
 
 Submitty, while making use of a user interface much more in line with those
 expected of a 2010's software product, is still mostly designed for use with
-functional autograding. However, due to it being an open and extensible
-platform, especially on account of its pluggable configurable assignment syntax,
-can (and has been) extended to support more advanced automated grading
+functional autograding. However, the platform is open and extensible, featuring
+its own assignment configuration syntax.
+This has been extended to support more advanced automated grading
 techniques, such as the use of static analysis, memory debugging and code
 coverage tools [@submitty].
 
-### ...
+While being relatively modern, Submitty has a number of technical design and
+structure problems. Originally it was designed specifically to grade assignments
+in specific classes at the Rensselaer Polytechnic Institute (RPI) as the
+"RPI Homework Submission Server" [@submitty_poster]. As a result, Submitty
+carries a degree of "technical debt" (a result of choosing a solution which
+solves an immediate problem more easily but raises issues later) [@tech_debt].
+Examples of this include:
 
-## Hardware
+- A somewhat convoluted installation process that requires a very specific
+  environment
+- The frequent need to drop to the command line from the web interface, often
+  involving (as a recommendation!) direct modification of internal database
+  structures
+- An overly complex grading process involving three or four components written
+  in different programming languages (PHP frontend talking to a Python daemon
+  which calls a C++ evaluator that makes use of shell scripts in order to
+  perform testing)
+
+### Summary
+
+Overall, the state of the art in autograding generally only involves the
+previously mentioned functional or black box methods. Comparing work on The
+Online Judge to EmbedInsight, a much more recent publications,
+relatively little has changed in the actual grading methodology. Some sort of
+basic "output comparison" is used to check a submission against the correct
+results, with relatively little regard for other aspects, such as performance.
+
+This reinforces the focus on these other aspects for this project. Functional
+autograding will likely be implictly implemented by the time measurement of
+performance is achieved.
+
+## Teaching computer fundamentals with assembly programming
+
+Assembly programming is a useful way to teach the core concepts of
+microprocessor systems. Using high-level programming languages (including C in
+this context!) is useful only to a point, since the purpose of these languages
+is to provide abstractions over machine instructions. Learning to write assembly
+programs also leads naturally to understanding concepts such as binary encoding,
+registers and memory in a way that using high-level languages often does not.
+
+In order to most effectively teach assembly programming, a target platform needs
+to be carefully chosen. While using x86_64-based processors might seem like the
+most obvious choice, since they are used in almost all desktops or laptops,
+they present a number of issues. Being based on CISC design from the late
+1970's, x86_64 processors expose a huge number of complex instructions, which
+would likely confuse a beginner.
 
 ARM processors are pervasive in mobile devices and increasingly so in
 microcontrollers, displacing 8-bit products. Newer designs in the Cortex-M
-series feature increasingly
-complex cores with more features than the older ARM7 and ARM9.
+series feature increasingly complex cores with more features than the older ARM7
+and ARM9. While some of these older designs (such as the ARM7TDMI) remain
+popular, newer cores are being rapidly adopted and support more modern features
+while remaining relatively easy to understand.
 
 STMicroelectronics produce a series of microcontrollers (and accompanying
 low-cost development boards) making use of Cortex-M cores called "STM32". The
@@ -177,6 +286,10 @@ SysTick timer and GPIO's (General Purpose I/O) being used.
 The SysTick timer is a counter that decrements at a configurable real-time
 interval and can generate interrupts [@armv7m].
 
+Using the same target as is already employed by Introduction to Computing has
+the added benefit of an existing "user base", allowing for easier testing with
+existing code.
+
 ## Emulators and simulators
 
 Emulators and simulators are useful tools that can be used, in whole or part, to
@@ -189,8 +302,8 @@ replacement for real hardware. Some tools combine both, using accurate
 simulation only for the most critical sections of evaluation [@marss].
 
 A number of both emulators and simulators were considered for the "software" method
-of evaluating programs for this project. It wasn't immeditately clear which
-would best fulfill the needs of the project, as they each have benefits and
+of evaluating programs for this project. It wasn't immediately clear which
+would best fulfil the needs of the project, as they each have benefits and
 drawbacks.
 
 ### xPack QEMU
@@ -245,10 +358,8 @@ registers and memory on a per-instruction basis [@unicorn]. It's not possible
 to record accurate timing information or break down execution to a level beyond
 a single instruction however (an inherent limitation when using QEMU as a base).
 
-![Unicorn is widely used in security research\label{fig:unicorn_showcase}](img/unicorn_showcase.png)
-
-Since Unicorn has seen a lot of use in information security research (see figure
-\ref{fig:unicorn_showcase}), it is relatively well documented and easy to use
+Since Unicorn has seen a lot of use in information security research, it is
+relatively well documented and easy to use
 (although there is little to no official documentation beyond examples given
 in the original Black Hat talk).
 
@@ -290,6 +401,82 @@ emulation mode ("SE") emulates syscalls for executing user-mode programs.
 
 Adding and making use of new features (as `SimObject`s) is easy with gem5's
 SCons-based build system and Python-based configuration scripts.
+
+### Simulator choice
+
+\definecolor{excellent}{RGB}{100,143,255}
+\definecolor{good}{RGB}{254,97,0}
+\definecolor{poor}{RGB}{220,38,127}
+
+**Tool** | **Accuracy** | **Performance** | **Compatibility** | **Instrumentation** | **Difficulty**
+ ---:|:--- |:--- |:--- |:--- |:---
+xPack QEMU | \textcolor{poor}{Low} | \textcolor{good}{Medium} | \textcolor{good}{Medium} | \textcolor{poor}{Low} | \textcolor{excellent}{Low}
+Unicorn | \textcolor{poor}{Low} | \textcolor{good}{Medium} | \textcolor{poor}{Low} | \textcolor{good}{Medium} | \textcolor{excellent}{Low}
+gem5 | \textcolor{good}{Medium / High*} | \textcolor{poor}{Low} | \textcolor{poor}{Low / Medium*} | \textcolor{excellent}{High} | \textcolor{good}{Medium / High*}
+Hardware | \textcolor{excellent}{High} | \textcolor{excellent}{High} | \textcolor{excellent}{High} | \textcolor{good}{Medium / High*} | \textcolor{poor}{High}
+
+The table above shows a comparison of each of the simulators considered for
+this project, along with real hardware. Both xPack QEMU and Unicorn are based on
+QEMU, so they are quite similar.
+
+#### Accuracy
+
+Neither of the QEMU-based emulators are very accurate, given that QEMU is
+designed for high performance. In fact, QEMU uses dynamic instruction
+translation to maximise speed, which makes the emulation nothing like the real
+processor being emulated [@qemu_tcg]. gem5 is much more accurate out of the box,
+since it is designed to model complex ARM application cores (Cortex-A series).
+It is given a more ambiguous rating since there aren't any configurations for
+Cortex-M cores provided, but this should be possible to improve with some work.
+
+#### Performance
+
+Both xPack QEMU and Unicorn therefore have
+reasonable performance, although not approaching real ARM hardware of course.
+gem5 is a slower since it tries to accurately model complex architectures (when
+configured to do so at least).
+
+#### Compatibility
+
+Unicorn has very poor compatibility with firmware built to run on an STM32F407,
+given that it is designed to only execute pure instructions. xPack QEMU
+is better in this regard, since it aims to emulate real microcontrollers and
+boards. gem5's compatbility out of the box is also relatively poor, again due to
+the lack of pre-made configurations for Cortex-M platforms (along with a lack of
+associated peripheral implementations). With further work, compatibility could
+be greatly improved.
+
+#### Instrumentation
+
+QEMU provides no support for instrumentation at all, and this extends to xPack's
+fork. Unicorn provides a simple to use API, but it doesn't allow for analysis
+beyond granularity of a single instruction. gem5 is set up to collect a lot of
+statistics throughout execution (since that's effectively what it was designed
+for). It also has the ability to generate very detailed trace data and can be
+easily extended to add further instrumentation. ARM defines a number of
+standardised debugging tools, which can (in theory) provide a lot of
+opportunities for analysis. Their use depends on the implementation being present on
+a specific microcontroller however, and can in some cases require additional
+expensive hardware.
+
+#### Difficulty
+
+Both QEMU-based emulators are very easy to use, with QEMU and Unicorn being
+widely used in the open-source community. gem5 is far less common (and has very
+limited documentation). The amount of work required to bring gem5's accuracy
+and compatibility closer to real hardware could also be substantial. Setting up
+some of the more advanced debugging facilities on a real STM32F407 is also
+quite complex.
+
+Overall, *gem5 is really the only choice for a software option*, since neither
+xPack QEMU or Unicorn provide any sort of cycle accurate modelling. This is
+important for the purposes of the project, since the programs being analysed are
+short, hand-written assembly programs. As real STM32F4-based hardware has
+inherently perfect accuracy and compatibility, high performance and the
+potential for a lot of instrumentation, it is worth exploring this avenue in
+addition to gem5.
+
+## Summary
 
 \newpage
 
@@ -358,7 +545,7 @@ Due to the nature of the assignments being graded, consideration needs to be
 taken for how to set up each assignment in the system. Not every problem can be
 graded with the same parameters: there will be specific test cases and
 potentially different sections of a program that should be measured. A flexible
-configuration system is therefore required to fulfill these requirements.
+configuration system is therefore required to fulfil these requirements.
 
 Since the system needs to integrate with Submitty, assignment configuration
 will need the ability to generate the output required to publish results in
@@ -429,80 +616,6 @@ part to evaluate performance.
 
 A real STM32F4xx-based board is used to evaluate performance of the solution.
 
-## Evaluation environment choice
-
-\definecolor{excellent}{RGB}{100,143,255}
-\definecolor{good}{RGB}{254,97,0}
-\definecolor{poor}{RGB}{220,38,127}
-
-**Tool** | **Accuracy** | **Performance** | **Compatibility** | **Instrumentation** | **Difficulty**
- ---:|:--- |:--- |:--- |:--- |:---
-xPack QEMU | \textcolor{poor}{Low} | \textcolor{good}{Medium} | \textcolor{good}{Medium} | \textcolor{poor}{Low} | \textcolor{excellent}{Low}
-Unicorn | \textcolor{poor}{Low} | \textcolor{good}{Medium} | \textcolor{poor}{Low} | \textcolor{good}{Medium} | \textcolor{excellent}{Low}
-gem5 | \textcolor{good}{Medium / High*} | \textcolor{poor}{Low} | \textcolor{poor}{Low / Medium*} | \textcolor{excellent}{High} | \textcolor{good}{Medium / High*}
-Hardware | \textcolor{excellent}{High} | \textcolor{excellent}{High} | \textcolor{excellent}{High} | \textcolor{good}{Medium / High*} | \textcolor{poor}{High}
-
-The table above shows a comparison of each of the simulators considered for
-this project, along with real hardware. As discussed in the background section,
-both xPack QEMU and Unicorn are based on QEMU, so they are quite similar.
-
-#### Accuracy
-
-Neither of the QEMU-based emulators are very accurate, given that QEMU is
-designed for high performance. In fact, QEMU uses dynamic instruction
-translation to maximise speed, which makes the emulation nothing like the real
-processor being emulated [@qemu_tcg]. gem5 is much more accurate out of the box,
-since it is designed to model complex ARM application cores (Cortex-A series).
-It is given a more ambiguous rating since there aren't any configurations for
-Cortex-M cores provided, but this should be possible to improve with some work.
-
-#### Performance
-
-Both xPack QEMU and Unicorn therefore have
-reasonable performance, although not approaching real ARM hardware of course.
-gem5 is a slower since it tries to accurately model complex architectures (when
-configured to do so at least).
-
-#### Compatibility
-
-Unicorn has very poor compatibility with firmware built to run on an STM32F407,
-given that it is designed to only execute pure instructions. xPack QEMU
-is better in this regard, since it aims to emulate real microcontrollers and
-boards. gem5's compatbility out of the box is also relatively poor, again due to
-the lack of pre-made configurations for Cortex-M platforms (along with a lack of
-associated peripheral implementations). With further work, compatibility could
-be greatly improved.
-
-#### Instrumentation
-
-QEMU provides no support for instrumentation at all, and this extends to xPack's
-fork. Unicorn provides a simple to use API, but it doesn't allow for analysis
-beyond granularity of a single instruction. gem5 is set up to collect a lot of
-statistics throughout execution (since that's effectively what it was designed
-for). It also has the ability to generate very detailed trace data and can be
-easily extended to add further instrumentation. ARM defines a number of
-standardised debugging tools, which can (in theory) provide a lot of
-opportunities for analysis. Their use depends on the implementation being present on
-a specific microcontroller however, and can in some cases require additional
-expensive hardware.
-
-#### Difficulty
-
-Both QEMU-based emulators are very easy to use, with QEMU and Unicorn being
-widely used in the open-source community. gem5 is far less common (and has very
-limited documentation). The amount of work required to bring gem5's accuracy
-and compatibility closer to real hardware could also be substantial. Setting up
-some of the more advanced debugging facilities on a real STM32F407 is also
-quite complex.
-
-Overall, *gem5 is really the only choice for a software option*, since neither
-xPack QEMU or Unicorn provide any sort of cycle accurate modelling. This is
-important for the purposes of the project, since the programs being analysed are
-short, hand-written assembly programs. As real STM32F4-based hardware has
-inherently perfect accuracy and compatibility, high performance and the
-potential for a lot of instrumentation, it is worth exploring this avenue in
-addition to gem5.
-
 ## Metrics
 
 Given the final choice of evaluation environments, the limits on the types of
@@ -566,7 +679,7 @@ a design incorporating composable "blocks" was decided upon. A
 Submitty-compatible output. These could be arranged in many configurations, each
 with specific options such as the value of test data to use.
 
-There are a number of possible design patterns that could fulfill this idea. One
+There are a number of possible design patterns that could fulfil this idea. One
 might be to follow gem5's Python configuration philosophy - write a script
 which instantiates and wires up the whole system. However, since assignments
 will likely follow a similar set up and pattern of performing one action and
