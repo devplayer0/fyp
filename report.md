@@ -1345,7 +1345,8 @@ support has been greatly expanded and includes STM32F4-based microcontrollers
 [@libopencm3]. While it doesn't provide a high-level HAL or implement helpers to
 support all of the peripherals exposed by the STM32F407, almost all of the
 hardware registers are defined and a `make`-based build template is available
-(`libopencm3-template`). The source tree for the helper code is located at
+(`libopencm3-template`). `libopencm3`'s only dependency is an `arm-none-eabi`
+toolchain. The source tree for the helper code is located at
 `app/perfgrade/build/`. Each of the important components will be described in
 their own section.
 
@@ -1483,7 +1484,7 @@ recommended value [@stm32f407vg].
 The process through which this is achieved is
 relatively complex, and involves a series of registers within the Reset and
 Clock Control (RCC) peripheral. These set the values for a number of clock
-divisors, multipliers and the Phased-Lock Loop (PLL). Each component has a its
+divisors, multipliers and the Phase-Locked Loop (PLL). Each component has a its
 own range of operation, so each parameter must be balanced to achieve the final
 desired clock speed. Clocks for other components, such as on the peripheral
 bus (APB) must be considered. `rcc_clock_setup_pll()` abstracts away this
@@ -1519,10 +1520,369 @@ of `main()` in real hardware.
 
 ## Hardware evaluation
 
-### Tracing
+With the implementation of a unified firmware to execute test code that
+leverages `libopencm3`, the remaining requirement for evaluation in hardware
+is a method of instrumentation. `libopencm3` provides the basics to debug code
+running on a real board with OpenOCD, the Open On-Chip Debugger. The purpose of
+OpenOCD is to utilise a "debug adapter" to interface with the microcontroller
+and provide a software abstraction for access to debug features. Key features
+include the ability to flash firmware and a `gdbserver` implementation
+[@openocd_about].
+
+### Debugging with OpenOCD
+
+`libopencm3`'s `make` rules and OpenOCD make it quite easy to debug code on the
+STM32F4 Discovery board. Setting up the debug adapter is as easy as connecting
+a mini USB cable to the STM32F4 Discovery board, which presents the ST-LINK/V2
+to the host [@stm32f4_discovery]. the `perfgrade.flash` target will make use of
+OpenOCD to flash firmware to the board. Running
+`openocd -f board/stm32f4discovery.cfg` will start an OpenOCD server which
+connects to the debugger, using a pre-made configuration designed specifically
+for the Discovery board. Port 4444 runs a `telnet` server which can be used to
+execute OpenOCD-specific commands, such as flashing firmware. A `gdbserver` will
+be opened on port 3333, and a `gdb` build supporting ARM can then be used to
+step through the firmware running on the board.
+
+### Cycle counting with the DWT
+
+As alluded to in the unified firmware section, the ARMv7-M's standard Debug and
+Watchpoint Trace unit (DWT) can be used to count cycles on the STM32F407. The
+only setup needed is to write a 1 to the `CYCCNTENA` bit in the `DWT_CTRL`
+register, which is done by `libopencm3`'s `dwt_enable_cycle_counter()` function.
+Following this `DWT_CYCCNT` will increment for every cycle of the core clock
+[@armv7m]. Additionally, `DWT_CYCCNT` can be written to in order to reset its
+value.
+
+### PyOCD and automation
+
+While OpenOCD is a popular and well-supported tool for interfacing with
+STM32 microcontrollers, it doesn't lend itself very well to automation. In order
+to manage hardware state (e.g. flashing and reading cycle counts) when
+evaluating student code in the Perfgrade system, flexible automation will be
+important. pyOCD provides a Python-based library and application for interfacing
+with Cortex-M-based microcontrollers. By utilising standardised "CMSIS packs"
+(Cortex Microcontroller Software Interface Standard) provided by ARM, pyOCD
+supports the majority of Cortex-M products on the market [@pyocd].
+
+In many cases pyOCD can act as a drop-in replacement for OpenOCD, since it
+provides its own CLI and `gdbserver` implementation. Its real value to this
+project is its Python API, however. Since the Perfgrade platform is written in
+Python, it's possible to use pyOCD to directly interact with a microcontroller
+in a normal program. For example, setting a breakpoint is as simple as
+calling `target.set_breakpoint(addr)`.
+
+## Hardware tracing
 
 Hardware tracing was attempted for this project, although this avenue ultimately
-proved impractical.
+proved impractical. Ideally it would have been possible to make use of standard
+ARM hardware to generate traces in the same format as gem5, but due to the
+complexities and limitations of the implementation, this approach was not
+successful.
+
+### The Embedded Trace Macrocell
+
+ARM defines the Embedded Trace Macrocell (ETM) as a standard part of the
+CoreSight Architecture. Variations of the ETM are implemented across ARM's
+products, including high-performance Cortex-A cores. The ETM "is a real-time
+trace module providing instruction and data tracing of a processor" [@etm].
+Since it is so widely used, separate reference manuals are used to define the
+specific parameters and behaviour of an ETM for different ARM cores. For a
+Cortex-M4 microcontroller, the ETM is specifically referred to as the ETM-M4
+[@etm_m4]. This is an optional component for the Cortex-M4 (which *is* included
+in the STM32F407) that supports only instruction tracing (no data) and its
+output is often incorporated into the Trace Port Interface Unit, as is the case
+for the STM32F407 [@stm32f407].
+
+One implementation that's not immediately obvious with the ETM-M4 is support
+for cycle-accurate tracing, which is actually optional as specified in the main
+ETM manual. The official procedure to check for cycle-accurate tracing support
+is to write to write a 1 to bit 12 in the `ETMCR` (ETM Control Register) and
+check if the value remains set afterwards [@etm]. The ETM-M4 manual's specifies
+that bit 12 of the `ETMCR` is "Reserved" and attempting write a 1 to this bit
+failed with the STM32F407. Unfortunately this was not discovered until partially
+successful tracing was achieved.
+
+Typically, interfacing with the ETM requires the use of expensive hardware and
+proprietary software, such as ARM's own ULINKpro, which was priced as $1,250
+(at time of writing) and is designed for use with Keil uVision [@ulink_pro]. The
+high cost is partially due to the fact that high performance (potentially
+multi-GHz) cores will produce a significant amount of trace data, which is
+difficult to process.
+
+### The Trace Port Interface Unit
+
+Since there are a number of related debug / tracing components present on a
+Cortex-M4-based microcontroller, a Trace Port Interface Unit (TPIU) is often
+included to multiplex the data from each source [@armv7m]. The result is pushed
+out over microcontroller pins using the TPIU's own framing protocol, which is
+described as part of the CoreSight Architecture Specification [@coresight].
+There are two primary output modes:
+
+- Asynchronous. This effectively acts as a unidirectional UART (operating at
+  a very high speed). Output is written to the Serial Wire Output pin (SWO).
+  Often used with the Instrumentation Trace Macrocell as a
+  pseudo serial port. Baud rate is CPU clock divided by a configurable amount.
+- Synchronous. A parallel interface of configurable width (1 to 4 bits for
+  Cortex-M4). Provides its own clock which is operates at half of the core
+  clock, but data should be read on both the falling and rising edges.
+
+Asynchronous mode is easier to set up and requires only a single pin but
+synchronous mode can be more reliable (with a dedicated clock signal) and
+provide more bandwidth.
+
+### sigrok and logic analysers
+
+sigrok is a project to create a free and open-source signal analysis software
+suite, mostly as part of `libsigrok`, which provides an abstration over a wide
+range of hardware [@sigrok]. Logic analysers provide a low-cost way to capture
+high-frequency signals from digital logic components, and Chinese knockoff
+devices can be purchased for around €10. The device used for this project is a
+clone of a Saleae logic analyser that is based around a Cypress FX2 chip
+[@saleae_clone]. The Cypress FX2 is essentially a general purpose
+high-bandwidth USB microcontroller, allowing the implementation of virtually
+any wire protocol over USB using a "General Purpose Programmable Interface
+(GPIF)" [@cypress_fx2]. This makes it ideal for use as a logic analyser.
+
+In order to capture and analyse signals with `libsigrok`, a tool such as the
+`sigrok-cli` or PulseView (Qt-based GUI) is used. sigrok uses the `fx2lafw`
+firmware (a sub-project of sigrok) to capture signals with Cypress FX2-based
+logic analysers [@fx2lafw]. sigrok makes use of a "stacking" protocol decoder
+system. This allows the output of one decoder to be passed to another. This
+modular design allows complex protocols to reuse existing decoders. For example,
+many protocols can be "stacked" atop the UART decoder if they are based on data
+from a serial port.
+
+### Decoding ETM data in PulseView
+
+![Sample SWO-based trace data in PulseView\label{fig:trace-swo}](img/tracing_swo.png)
+
+As part of an article about tracing on STM32 platforms, sigrok protocol decoders
+for the TPIU and ETM were contributed to sigrok.
+This article additionally describes the general setup required to start
+capturing on a microcontroller and viewing this data in PulseView
+[@stm32_tracing]. Figure \ref{fig:trace-swo} shows the TPIU and ETM protocol
+decoders stacked on top of a UART decoder.
+
+Note that this is using sample data
+provided by the author of the article - capturing SWO data at high baud rates
+(8 megabaud as suggested) proved to be unstable and often corrupted. The focus
+for tracing in this project shifted to the TPIU's synchronous mode, which is not
+implemented by the TPIU and ETM decoders included with sigrok.
+
+### Setting up the STM32F4 Discovery hardware for tracing
+
+![Hardware setup for tracing\label{fig:trace-hardware}](img/tracing_hw.jpg)
+
+In order to begin generating trace data with the STM32F4 Discovery board, a
+relatively sophisticated hardware and firmware setup is needed. Figure
+\ref{fig:trace-hardware} shows the knockoff logic analyser connected to the
+required pins [@stm32f407]:
+
+- `GND` (white).
+- `PB3` (aka `SWO`; rightmost blue). Used for testing of asynchronous TPIU mode.
+- `PE2` (aka `TRACECLK`; left blue). Dedicated clock for synchronous TPIU mode.
+- `PE3` to `PE6` (aka `TRACED0` to `TRACED3`; brown, red, grey and purple).
+  Parallel data pins for synchronous TPIU mode.
+- `PD12` (black). Connected to green LED on STM32F4 discovery board
+  [@stm32f4_discovery], used for debugging and testing of logic analyser.
+
+``` {.c label="lst:trace-gpio" caption="Releasing trace pins from GPIO"}
+rcc_periph_clock_enable(RCC_GPIOE);
+gpio_mode_setup(GPIOE, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO2 | GPIO3 | GPIO4 | GPIO5 | GPIO6);
+gpio_set_af(GPIOE, GPIO_AF0, GPIO2 | GPIO3 | GPIO4 | GPIO5 | GPIO6);
+```
+
+### ETM configuration
+
+Once the hardware is set up, a multitude of registers must be configured to
+generate trace data in the appropriate format. A test firmware utilising
+`libopencm3` was written for this task. Before all of these registers can be
+written however, the required means must be released from GPIO. Listing
+\ref{lst:trace-gpio} shows this process, making use of `libopencm3`'s GPIO
+abstraction functions.
+
+``` {.c label="lst:trace-dbgmcu" caption="Enabling the trace pins"}
+// Enable trace pins
+DBGMCU_CR |= DBGMCU_CR_TRACE_IOEN;
+// 4-bit synchronous mode
+DBGMCU_CR &= ~DBGMCU_CR_TRACE_MODE_MASK;
+DBGMCU_CR |= DBGMCU_CR_TRACE_MODE_SYNC_4;
+```
+
+The first step towards tracing is to enable the trace IO pins. This is done by
+writing to the Debug MCU configuration register or `DBGMCU_CR` [@stm32f407].
+Listing \ref{lst:trace-dbgmcu} shows `TRACE_IOEN` being set to 1 along with the
+appropriate value for 4-bit synchronous mode in `TRACE_MODE`.
+
+``` {.c label="lst:trace-tpiu-config" caption="Enabling the trace pins"}
+// Enable access to TPIU registers
+SCS_DEMCR |= SCS_DEMCR_TRCENA;
+// Port is 4 bit
+TPIU_CSPSR = (1 << 3);
+TPIU_FFCR =
+    TPIU_FFCR_TRIGIN | // Indicate triggers
+    TPIU_FFCR_ENFCONT; // Enable formatter
+// Parallel protocol
+TPIU_SPPR &= ~0b11;
+```
+
+Once the trace pins are configured, the TPIU must be set up. Listing
+\ref{lst:trace-tpiu-config} shows:
+
+1. The `TRCENA` bit of the Debug Exception and Monitor Control Register (or
+   `DEMCR`) must be set. This enables the use of a number of trace features,
+   including the DWT, ITM and TPIU [@armv7m].
+2. Writing to the Current Parallel Port Size Register (`TPIU_CSPSR`)
+   configures the width of the TPIU's parallel port, which in this case should be
+   4-bit, the maximum for the Cortex-M4 [@armv7m].
+3. The `TRIGIN` and `ENFCONT` bits of the TPIU Formatter and Flush Control
+   Register (`TPIU_FFCR`) are set so that the TPIU emits a sequence when tracing
+   begins and always formats input data [@cortex_m4].
+4. Finally, the TPIU Selected Pin Protocol Register (`TPIU_SPPR`) is set to 0 to
+   select parallel trace mode.
+
+``` {.c label="lst:trace-dwt-config" caption="Setting up DWT comparators to trigger tracing"}
+// Comparator 0: Match precise start address of test function (as input to
+// ETMTRIGGER and the EmbeddedICE start resource)
+// Program exact address of test function
+DWT_COMP(0) = test;
+// Disable mask (exact address, halfword aligned)
+DWT_MASK(0) = 0;
+// Enable address comparison functions
+DWT_FUNCTION(0) &= ~(DWT_FUNCTIONx_DATAVMATCH | DWT_FUNCTIONx_CYCMATCH);
+// Generate CMPMATCH[0] event on instruction address (also enables comparator)
+DWT_FUNCTION(0) |= 0b1000;
+
+// Comparator 1: Match precise end address of test function (as input to the
+// EmbeddedICE stop resource)
+// Program exact address of last instruction in test function
+DWT_COMP(1) = test_end;
+// Disable mask (exact address, halfword aligned)
+DWT_MASK(1) = 0;
+// Enable address comparison functions
+DWT_FUNCTION(1) &= ~(DWT_FUNCTIONx_DATAVMATCH | DWT_FUNCTIONx_CYCMATCH);
+// Generate CMPMATCH[1] event on instruction address (also enables comparator)
+DWT_FUNCTION(1) |= 0b1000;
+```
+
+In order to limit the generation of trace data to just the test code, the
+previously mentioned DWT can be used. Listing \ref{lst:trace-dwt-config} shows
+configuration of 2 of the DWT's comparators to trigger when the PC reaches the
+start and end of the test code respectively [@armv7m]. The exact setup process
+will not be described, but essentially:
+
+1. The comparator's value is set to the address of the labels defined for the
+   start or end
+2. Address masking is disabled (exact match)
+3. The comparator is set to address comparison mode (PC value)
+4. The comparator is set to generate a `CMPMATCH` event, which is fed into the
+   ETM
+
+``` {.c label="lst:trace-etm-config" caption="Setting up the ETM"}
+// Unlock ETM registers
+ETMLAR = CORESIGHT_LAR_KEY;
+
+// Config mode
+ETMCR |= ETMCR_PROGRAMMING;
+ETMCR =
+    ETMCR_ETMEN |           // Enable ETM
+    ETMCR_TIMESTAMP |       // Enable timestamping
+    ETMCR_BRANCH_OUTPUT |   // Enable branch output
+    //ETMCR_CYCLETRACE |
+    ETMCR_STALL_PROCESSOR;  // Stall processor when buffer is full
+// TPIU bus ID
+ETMTRACEIDR = 69;
+// TraceEnable is controlled by start/stop
+ETMTECR1 |= ETMTECR1_TCENABLED;
+// Stall when less than 24 bytes in FIFO (24 is the size of the FIFO)
+ETMFFLR = 24;
+```
+
+At this point, only the ETM itself is left to configure. Listing
+\ref{lst:trace-etm-config} shows the first part of this process:
+
+1. In order to configure the ETM, it must first be unlocked. This is done by
+   writing `0x5acce55` to the ETM Lock Access Register (`ETMLAR`) [@etm].
+2. Programming mode must be enabled be setting the `PROGRAMMING` bit in the
+   ETM Main Control Register (`ETMCR`). This also stops any active trace.
+3. Several flags are set in the ETMCR (see listing \ref{lst:trace-etm-config}).
+   Note that `CYCLETRACE` is disabled since the ETM-M4 doesn't support
+   cycle-accurate tracing.
+4. The CoreSight Trace ID Register (`ETMTRACEIDR`) sets the stream ID of
+   ETM data in the TPIU (since multiple components are multiplexed into the TPIU).
+5. The `TCENABLED` bit is set in the TraceEnable Control 1 register (`ETMTECR1`)
+   in order to enable of control trace start/stop logic.
+
+``` {.c label="lst:trace-etm-trigger" caption="Defining ETM start/stop conditions"}
+// Generate trigger on CMPMATCH[0]
+ETMTRIGGER =
+    TRACE_BOOL_A |                          // On A
+    TRACE_RESOURCE_A(TRACE_TYPE_DWT, 0);    // A = CMPMATCH[0]
+
+// Hardcode TraceEnable to be on (since we're using start/stop block)
+ETMTEEVR =
+    TRACE_BOOL_A |                                  // On A
+    TRACE_RESOURCE_A(TRACE_TYPE_ALWAYS, 0b1111);    // Always true
+
+ETMTESSEICR =
+    ETMTESSEICR_START(0) |  // Start on CMPMATCH[0]
+    ETMTESSEICR_STOP(1);    // Stop on CMPMATCH[1]
+
+// Exit config mode
+ETMCR &= ~ETMCR_PROGRAMMING;
+```
+
+Finally, the start/stop behaviour of the ETM is configured. Listing
+\ref{lst:trace-etm-trigger} details:
+
+1. The Trigger Event Register, `ETMTRIGGER`, is set to generate a trigger event
+   (which can later be read in the stream) when the DWT `CMPMATCH[0]` event is
+   raised. This was previously set up to correspond to the start of the test
+   code.
+2. The TraceEnable Event Register (`ETMTEEVR`) is set to always be on, since the
+   start/stop block of the ETM is being used to control trace behaviour (as
+   set earlier).
+3. Tracing is set to start on `CMPMATCH[0]` and stop on `CMPMATCH[1]` by writing
+   to theTraceEnable Start/Stop EmbeddedICE Control Register (`ETMTESSEICR`).
+   In the ETM-M4, "EmbeddedICE watchpoint comparators" refer to the DWT
+   comparators, hence the connection to `CMPMATCH[x]` [@etm_m4].
+4. Programming mode of the ETM is exited by clearing the `PROGRAMMING` bit in
+   the `ETMCR`, which enables tracing. Actual trace data will only be emitted
+   once the start condition is triggered.
+
+Note that the `ETMTRIGGER` and `ETMTEEVR` values are "ETM event resources".
+These are bitfields that incorporate (a) two resource identifiers and (b) a logic
+function. A resource identifier can refer to a number of different input
+sources, such as a DWT comparator or a hardcoded value. The logic function then
+produces an output based on one or both of the resource inputs [@etm].
+
+### Capturing and decoding ETM data
+
+![Captured synchronous TPIU data in PulseView\label{fig:trace-synchronous}](img/tracing_parallel.png)
+
+Once all of the configuration is done, TPIU data will appear on the trace pins
+as shown in figure \ref{fig:trace-synchronous}. As mentioned previously, the
+decoders for TPIU and ETM data included with sigrok don't support decoding
+synchronous mode data. Additionally, although `libsigrok` and
+`libsigrok-decode` (which provides the protocol decoders) have API's and a
+number of language bindings, the decoders themselves aren't very well suited to
+decoding a large amount of high-level data for machine analysis. As a result,
+it was decided to write a custom Python data processing script, with the
+potential for this to be ported to a faster language when completed.
+
+Decoding of the synchronous TPIU protocol, which is slightly different to the
+asynchronous variant implemented in the sigrok decoder, was successfully
+implemented by referencing the ARM CoreSight Architecture manual [@coresight].
+Additionally, decoding of some ETM packets (extracted from the TPIU stream)
+was achieved by referencing the existing sigrok decoder as well as the ETM
+specification [@etm]. It was at this point that the lack of support
+cycle-accurate tracing support was discovered in the ETM-M4. The decision was
+made to stop exploring hardware tracing, since cycle accuracy is important to
+this project. It is also likely that a significant amount of further effort
+would be required to make this work at a level equivalent to gem5's tracing
+setup. The incomplete Python script, which reads in a list of 4-bit values from
+a `sigrok-cli` command's output, is included with the source for this project
+at `app/tpiu_decode.py`.
 
 ## Perfgrade platform
 
@@ -1584,7 +1944,7 @@ for any input value (including nested ones), as well as the `description`.
 
 ### Step implementation
 
-Since the Perfgrade platform is written in Python, a language object-oriented
+Since the Perfgrade platform is written in Python, a language with object-oriented
 features, each of the step `type`s is implemented as a class inheriting from a
 base `Step`. This class defines a number of methods and defines some common
 behaviour, with the `run()` method needing to be implemented by all subclasses
