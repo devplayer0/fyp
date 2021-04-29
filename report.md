@@ -14,6 +14,7 @@ title-extra: |
   \textsf{Supervisor: Dr. Jonathan Dukes}
   ```
 titlepage: true
+toc-own-page: true
 
 csl: harvard.csl
 bibliography: references.bib
@@ -946,6 +947,373 @@ at a glance which parts of a program are taking up the most CPU time.
 Evaluating student submissions with the gem5 simulator was the initial approach
 attempted for this project.
 
+### Basic setup
+
+Configuring and using gem5 is somewhat non-trivial when compared with other more
+commonly used emulators (such as QEMU), especially given the overall lack of
+documentation for the project. Documentation is provided for building the
+simulator from source, which is necessary as binary distributions aren't
+provided. gem5 is built for a specific ISA-variant pair, which would lead to
+a significant matrix of binaries [@gem5_building].
+
+The ISA in this project's case is ARM, since an ARM-based platform is being
+simulated. The primary variant used is `opt`, which includes compiler
+optimisations but also includes runtime debugging support (which will be
+important later). The command used to build gem5 for this project, making use of
+gem5's SCons-based build system, is:
+
+```
+scons build/ARM/gem5.opt -j32
+```
+
+Adding `-j32` builds gem5 with 32 simultaneous jobs, which speeds up the build
+process significantly, especially considering the size of the codebase.
+Typically, the value of `-j` is the number of logical
+threads available on the system. In this case it is 32, for a 16-core processor
+with 2 threads per core.
+
+Once built, the simulator can be used by running:
+
+```
+build/ARM/gem5.opt [global options] <config script path> [script options]
+```
+
+"Global options" are read by the C++ implementation pieces and are used to
+configure internals such as which runtime debug features are enabled. All
+remaining arguments are passed to the configuration script, which can be
+accessed via `sys.argv` as normal. Note that the configuration script _must_ be
+provided; without it no components in the simulator can be instantiated or used.
+
+### CPU accuracy
+
+As previously discussed, gem5 implements a number of different CPU models. In
+order to achieve the most accurate simulation possible for the Cortex-M4 in the
+STM32F407, care must be taken when setting up the CPU. Out of the available overall
+models, `Minor` most closely emulates the 3-stage pipeline with branch prediction
+of the Cortex-M4 [@cortex_m4]. `O3` is a more advanced model, but this implements
+out-of-order execution, which is not a feature of a real Cortex-M4. Models
+derived from the `SimpleCPU` are designed to execute non-critical sections of
+code as quickly as possible and do not accurately model CPU operations.
+
+``` {.python label="lst:gem5-cpu" caption="Snippet from CPU model parameters"}
+# Complex ALU instructions have a variable latencies
+class FUMinorIntMul(MinorDefaultIntMulFU):
+    opList = [ OpDesc(opClass='IntMult', opLat=2) ]
+
+class FUMinorIntDiv(MinorDefaultIntDivFU):
+    opList = [ OpDesc(opClass='IntDiv', opLat=9) ]
+```
+
+Beyond the choice of overall model, there are many parameters which can be
+tweaked to improve accuracy. `app/perfgrade/gem5_config/common.py` (listing
+\ref{lst:gem5-cpu}) defines some of these values based on the limited
+information on instruction timing in the Cortex-M4 Technical Reference
+[@cortex_m4]. Note that the timing for complex instructions, such as for
+hardware division, are only given a range in the reference manual. No details
+on what impacts the number of cycles required is provided. It is likely that
+access to proprietary ARM IP would be required to obtain this information.
+Some of gem5's sample configuration files make use of a sort of mini-DSL to
+determine the number of cycles taken for certain instructions. Relatively
+complex logic is sometimes used derive this value from the instruction opcode
+and operands, for example in `configs/common/cores/arm/HPI.py` (within the gem5
+source tree).
+
+### Configuration script
+
+While gem5 provides a number of pre-made configuration scripts (in the
+`configs/` subdirectory), all of the ARM-based examples are designed to run
+simulations for platforms with Cortex-A cores. As a result, a custom script was
+written for this project. Only snippets of the script will be included here, the
+complete file is available at `app/perfgrade/gem5_config/stm32f4.py`.
+
+#### Options
+
+\hfill
+
+``` {.python label="lst:gem5-config-args" caption="Custom config script options"}
+parser = argparse.ArgumentParser()
+parser.add_argument('rom', help='ROM to load')
+parser.add_argument('--wait-gdb', action='store_true', help='Wait for GDB')
+parser.add_argument('--test-data', help='Test data file')
+parser.add_argument('--test-addr', default=0x20004000, help='Test data load address')
+parser.add_argument('--test-pc', default=0, help='Load test data when PC reaches specific value')
+parser.add_argument('--dump-ranges', help='Dump range(s) of memory after simulation (start address:size[,...])',
+    type=lambda a: [parse_range(r) for r in a.split(',')])
+
+args = parser.parse_args()
+```
+
+Listing \ref{lst:gem5-config-args} shows the code which reads options from the
+command line, making use of Python's standard `argparse` module. There is a
+single mandatory argument: `rom`. This is the path to a raw firmware image
+(in the same format as the contents of the ROM on a real STM32F4-based
+microcontroller). Configuration scripts provided with gem5 usually load either
+a user-mode ELF application or a Linux kernel `Image`, but in this case the raw
+firmware is used (with the entrypoint being determined by the reset handler
+entry in the vector table).
+
+`--wait-gdb` is just used to tell the gem5 CPU object to wait for a gdb
+connection (gem5 provides a `gdbserver` implementation for the simulated
+platform), which is useful for debugging simulated code.
+
+The `--test-*` flags are used to control the loading of arbitrary data into
+memory at runtime. `--test-data` is the file to load (raw binary), `--test-addr`
+is the address at which to load it and `--test-pc` (if specified) causes the
+data to be loaded only when the program counter equals a certain value.
+
+`--dump-ranges` is a comma-delimited list of `address:size` pairs which denote
+ranges of memory to dump to disk on simulator exit. Each pair will result in a
+file `mem<i>.bin` being written to the globally-defined gem5 output directory
+(settable via the gem5 global option `--outdir`). `<i>` is the zero-indexed
+offset into the supplied list of `address:size` pairs.
+
+#### CPU and memories
+
+\hfill
+
+``` {.python label="lst:gem5-config-mem" caption="CPU and memory setup"}
+# Create a CPU
+system.cpu = CM4Minor()
+
+# Create a memory bus, a system crossbar, in this case
+system.membus = CM4XBar()
+system.membus.badaddr_responder = BadAddr()
+system.membus.default = system.membus.badaddr_responder.pio
+
+# Hook the CPU ports up to the membus
+system.cpu.icache_port = system.membus.cpu_side_ports
+system.cpu.dcache_port = system.membus.cpu_side_ports
+
+# create the interrupt controller for the CPU and connect to the membus
+system.cpu.createInterruptController()
+
+# Create memory regions
+system.sram = SimpleMemory(range=system.mem_ranges[0], latency='0ns')
+system.sram.port = system.membus.mem_side_ports
+system.rom = SimpleMemory(range=system.mem_ranges[1], latency='1ns')
+system.rom.port = system.membus.mem_side_ports
+system.rom_alias = SimpleMemory(range=system.mem_ranges[2], latency='1ns')
+system.rom_alias.port = system.membus.mem_side_ports
+system.scs = SimpleMemory(range=system.mem_ranges[3])
+system.scs.port = system.membus.mem_side_ports
+```
+
+Once the command line options are parsed and the basic system objects have been
+instantiated (effectively common to all gem5 configuration scripts), the CPU
+and memories in the system are configured. Listing \ref{lst:gem5-config-mem}
+shows this. `CM4Minor` is the overall CPU object, as defined in the `common.py`
+file described in the previous section. What follows the instantiation of the
+CPU is the setup of a memory bus (with a `BadAddr` responder to prevent gem5
+from crashing on an attempt to access an unmapped address).
+
+Only four memory objects are used in the configuration for this project. All use
+the gem5 `SimpleMemory`, whose simulated characteristics are roughly equivalent
+to SRAM; employing fixed latency. As mentioned previously, gem5 implements
+sophisticated modelling of DRAM, but this is not required for most use of a
+Cortex-M4. The layout of each of the memories follows the Cortex-M4's memory
+map [@cortex_m4], although greatly simplified. Only the SRAM, ROM (with its
+alias at `0x00000000`) and the System Control Space (SCS) are mapped.
+
+While gem5 can model an MMU to define memory access permissions, this involves
+far more complex concepts (such as caches, a TLB, etc) than are needed for this
+project. The MPU implemented in the Cortex-M4 is quite different to a full MMU
+and is not supported in gem5. As a result, all memory (including ROM) is
+readable, writable and executable. In practice, this has no impact on the types
+of programs being evaluated in this project.
+
+#### Final steps
+
+\hfill
+
+``` {.python label="lst:gem5-config-final" caption="Final gem5 configuration"}
+system.workload = ARMROMWorkload(rom_file=args.rom)
+
+# Set the cpu to use the process as its workload and create thread contexts
+system.cpu.tracer = PerfgradeTracer()
+system.cpu.wait_for_remote_gdb = args.wait_gdb
+system.cpu.createThreads()
+
+# set up the root SimObject and start the simulation
+root = Root(full_system=True, system=system)
+root.dumper = MemDump(system=system)
+
+# instantiate all of the objects we've created above
+m5.instantiate()
+
+if args.test_data:
+    if args.test_pc:
+        root.dumper.loadWhen(args.test_data, Addr(args.test_addr), Addr(args.test_pc))
+    else:
+        root.dumper.load(args.test_data, Addr(args.test_addr))
+
+print("Beginning simulation!")
+exit_event = m5.simulate()
+print('Exiting @ tick %i because %s' % (m5.curTick(), exit_event.getCause()))
+
+if args.dump_ranges:
+    for i, r in enumerate(args.dump_ranges):
+        root.dumper.dump(f'mem{i}.bin', r.getValue())
+```
+
+Following the configuration of the CPU and memories, what remains is the final
+overall system setup and actual execution of the simulation. Listing
+\ref{lst:gem5-config-final} shows these final steps.
+
+- The assignment of the
+  system's `Workload` is where the raw firmware image from command-line
+  arguments is actually configured. `ARMROMWorkload` is the first of three custom
+  `SimObject`s added to gem5 for this project. It handles loading the raw firmware
+  image and setting up the initial system state required to execute the code
+  within.
+- `PerfgradeTracer`, another custom `SimObject`, replaces the default
+  tracer to generate more machine-readable traces.
+- The `Root` takes the now fully configured system and sets the simulation mode
+  to "full system" (instead of syscall emulation).
+- `MemDump` is the final custom `SimObject`, providing helper methods to load
+  into and dump out of memory.
+- `m5.simulate()` begins the simulation.
+
+Once the simulation is complete, any memory dumps are made and gem5 exits.
+
+### Loading raw firmware images
+
+`ARMROMWorkload` is, as described above, a custom `SimObject` that adds the
+capability to load raw firmware images into gem5. Its main implementation is at
+`src/perfgrade/workload.cc`, with the Python binding file at
+`src/perfgrade/ARMROMWorkload.py` (within the modified gem5 source tree used in
+this project). Since the purpose of a `Workload` implementation in gem5 is to
+set up initial system state and load code into memory, the C++ class essentially
+boils down to a series of unconditional steps. In the constructor:
+
+1. `Loader::RawImage` is used to perform the actual read of the firmware image
+   from disk.
+2. The address of the entry point is read from the vector table. As defined by
+   the ARMv7-M architecture, the vector table is at address `0x00000000` and
+   the reset handler is at offset 0x4 in within the table [@armv7m].
+3. The reset handler's address is written into the workload's symbol table as
+   "_start". Debugging output from gem5 will show addresses relative to this
+   symbol.Normally this would be filled from a symbol table in an ELF
+   executable.
+
+In `initState()`:
+
+1. The ROM is written into memory at `0x08000000` and `0x00000000`, as defined
+   by the memory map [@cortex_m4].
+2. A magic value (`0xcafebabe`) is written into the memory location within
+   the System Control Space (SCS) that normally holds CPUID information
+   [@armv7m]. This is done so that simulated code can easily determine whether
+   or not it is running within gem5 or real hardware.
+3. The CPU state is reset.
+4. The stack pointer is set to the initial value defined in the vector table
+   (offset `0x0`).
+5. Necessary flags are set to ensure the CPU is in Thumb mode, since ARMv7-M
+   can only execute Thumb instructions [@armv7m].
+
+### Generating machine-readable traces
+
+`PerfgradeTracer`, as described, replaces the default tracer implementation in
+gem5 in order to generate trace data that is easier to process later (for
+anaylsis). It is essentially a simplified version of the default tracer that
+creates a protocol buffer-based output file instead of print human-readable
+trace information. Its C++ implementation is located at
+`src/perfgrade/tracer.cc`, along with its Python binding at
+`src/perfgrade/PerfgradeTracer.py`.
+
+``` {.protobuf label="lst:trace-proto" caption="Protocol buffer definition for traces"}
+syntax = "proto2";
+package PGProto;
+
+message Header {
+  required uint64 tick_freq = 1;
+}
+
+message MemAccess {
+  required uint64 addr = 1;
+  required uint32 size = 2;
+}
+
+message ExecTrace {
+  required fixed64 tick = 1;
+  required fixed64 cycle = 2;
+  required uint64 pc = 3;
+  optional uint32 upc = 4;
+
+  required bool predicate = 5;
+  optional uint64 data = 6;
+  optional MemAccess mem = 7;
+}
+```
+
+Listing \ref{lst:trace-proto} shows the complete definition of the protocol
+buffer used for trace data. Protocol buffers are essentially a set of tools
+which allow the creation of efficient binary file formats from a simple
+definition. The `protoc` tool is able to generate code in a number of languages
+that can read and write protobufs from the definition [@protobufs]. gem5
+actually already provides some scaffolding to support the use of protobufs.
+`ProtoOutputStream` is a convenience class which can take a message and write it
+out to a file in the runtime gem5 output directory, automatically prepending the
+message's length and transparently providing gzip compression (if desired).
+
+The `PerfgradeTracer` class then acts as a fairly simple implementation of
+`Tracer::InstTracer`, including all of the information in the protobuf
+definition. On startup, a `Header` message is written which specifies the tick
+frequency. When `TracerRecord::dump()` is called, an `ExecTrace` message is
+written out to file. `upc` is the "micro-op program counter" value, which is
+relevant in the case of instructions that are broken down into so-called
+micro-ops, such as `ldm`, which breaks down into a series of loads [@armv7m].
+`predicate` is always true, unless a conditional instruction (e.g. `beq`)
+is not executed. `data`'s value varies, generally meaning the result of an
+operation (e.g. the sum of an `add`). `mem` is present only in the case of a
+memory access.
+
+### Loading and dumping memory for testing
+
+In order to aid with testing, the `MemDump` `SimObject` provides some helper
+methods. While the prior two custom objects only take a single parameter each
+across the Python binding layer , `MemDump` exports 3 methods this way, along
+with requiring a `System` object as a parameter (in order to access memory).
+This binding file is located at `src/perfgrade/MemDump.py`. The C++
+implementation, at `src/perfgrade/mem_dump.cc`, is relatively simple. It mostly
+relies on the infrastructure provided by gem5's internals.
+
+#### `dump()`
+
+This method is typically called once the simulation has finished (see the
+configuration script), and accepts a filename and address range. The contents
+of memory in the address range is read into a simple buffer using the `System`
+object's physical memory proxy (traversing the configured memory bus). gem5's
+`OutputStream` class is then used to write the contents of this buffer out to a
+file in the globally configured output directory.
+
+#### `load()`
+
+Essentially the opposite of `dump()`. The contents of the provided
+file are read into a buffer before being written into memory at the given
+address via the `System`'s physical memory proxy.
+
+#### `loadWhen()`
+
+Works in exactly the same manner as `load()`, but defers the actual operation to
+a point in time when the program counter reaches the provided
+value, taking advantage of gem5's event-based architecture. `PCEvent` is a type
+of event provided by gem5 that is processed when the program counter equals a
+certain value. `LoadEvent` extends this class with a `process()` method
+that simply performs the same operation as `load()`. `loadWhen()` queues an
+appropriate `LoadEvent` when called.
+
+### Stopping the simulation
+
+While a user-mode program typically exits using an `exit()` syscall (or
+equivalent on non-Unix systems), there is no equivalent in the case of a
+microcontroller. Simple programs typically lock the processor in an infinite
+loop when complete. Since simulations often need to have a definite end (such as
+in the case of this project's evaluation of submissions), gem5
+provides a solution via its "`m5ops`". These are fake CPU opcodes that gem5
+implements to perform simulator-specific operations, such as dumping statistics,
+switching the CPU model or shutting down the simulation altogether
+[@gem5_m5ops]. In order to stop gem5, the evaluated program simply needs to use
+the opcode for the `exit` op.
+
 ## Hardware evaluation
 
 ### Tracing
@@ -1225,11 +1593,11 @@ pre-installed).
 
 ...
 
-## Submitty integration
-
 \newpage
 
 # Evaluation
+
+## Submitty integration
 
 \newpage
 
