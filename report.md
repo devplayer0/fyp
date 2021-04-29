@@ -1175,6 +1175,12 @@ overall system setup and actual execution of the simulation. Listing
 
 Once the simulation is complete, any memory dumps are made and gem5 exits.
 
+![gem5 configuration script visualisation\label{fig:gem5_config}](img/gem5_config.png)
+
+Figure \ref{fig:gem5_config} shows gem5's visualisation of the configuration
+script. When compared to the sample in figure \ref{fig:gem5_config_complex},
+it's clear that the configuration used for this project is much simpler.
+
 ### Loading raw firmware images
 
 `ARMROMWorkload` is, as described above, a custom `SimObject` that adds the
@@ -1191,7 +1197,7 @@ boils down to a series of unconditional steps. In the constructor:
    the ARMv7-M architecture, the vector table is at address `0x00000000` and
    the reset handler is at offset 0x4 in within the table [@armv7m].
 3. The reset handler's address is written into the workload's symbol table as
-   "_start". Debugging output from gem5 will show addresses relative to this
+   `_start`. Debugging output from gem5 will show addresses relative to this
    symbol.Normally this would be filled from a symbol table in an ELF
    executable.
 
@@ -1295,7 +1301,9 @@ address via the `System`'s physical memory proxy.
 
 Works in exactly the same manner as `load()`, but defers the actual operation to
 a point in time when the program counter reaches the provided
-value, taking advantage of gem5's event-based architecture. `PCEvent` is a type
+value, taking advantage of gem5's event-based architecture. The use of this
+function is to get around certain initialization routines which can zero out
+space allocated for test data (in the `.bss` section). `PCEvent` is a type
 of event provided by gem5 that is processed when the program counter equals a
 certain value. `LoadEvent` extends this class with a `process()` method
 that simply performs the same operation as `load()`. `loadWhen()` queues an
@@ -1314,14 +1322,207 @@ switching the CPU model or shutting down the simulation altogether
 [@gem5_m5ops]. In order to stop gem5, the evaluated program simply needs to use
 the opcode for the `exit` op.
 
+## Unified firmware
+
+In order to simplify evaluation of programs in both hardware and software, a
+sort of "unified firmware" support was created. Essentially, this is specialised
+microcontroller startup code which is set up to support running in both a
+simulator and real hardware. When linking a submission to this code, the final
+firmware image can run unmodified in both environments. In theory a perfect
+simulator wouldn't require any specific code to account for differences in
+the environment. However, with gem5 not being set up to simulate a Cortex-M4 and
+diminishing returns on attempting to improve simulation accuracy, it's easier to
+make some exceptions for specific differences. Assignments typically require the
+submission of a source file with just their solution code, so startup code is
+needed anyway.
+
+### `libopencm3`
+
+`libopencm3` is a free and open-source project that aims to create a "firmware
+library for various ARM Cortex-M3 microcontrollers, including ST STM32 and
+others". Originally created as `libopenstm32` for STM32 Cortex-M3-based boards,
+support has been greatly expanded and includes STM32F4-based microcontrollers
+[@libopencm3]. While it doesn't provide a high-level HAL or implement helpers to
+support all of the peripherals exposed by the STM32F407, almost all of the
+hardware registers are defined and a `make`-based build template is available
+(`libopencm3-template`). The source tree for the helper code is located at
+`app/perfgrade/build/`. Each of the important components will be described in
+their own section.
+
+### `rules.mk` and `Makefile`
+
+``` {.makefile label="lst:fw-makefile" caption="Universal firmware Makefile"}
+PROJECT = perfgrade
+BUILD_DIR = bin
+
+CSTD = -std=c11
+INCLUDES += -Iinclude
+VPATH += src
+CFILES = src/main.c
+AFILES = src/util.S
+
+DEVICE = stm32f407vgt6
+#OOCD_FILE = board/stm32f1nucleo.cfg
+#OOCD_FILE = board/stm32f4discovery.cfg
+#OOCD_FILE = openocd.cfg
+
+# You shouldn't have to edit anything below here.
+# VPATH += $(SHARED_DIR)
+# INCLUDES += $(patsubst %,-I%, . $(SHARED_DIR))
+# OPENCM3_DIR=libopencm3
+
+include $(OPENCM3_DIR)/mk/genlink-config.mk
+include rules.mk
+include $(OPENCM3_DIR)/mk/genlink-rules.mk
+```
+
+These are mostly copied from the project template provided by `libopencm3` and
+follow a fairly typical pattern: `rules.mk` contains a set of common `make`
+rules and all of the sources and options are defined in the top-level
+`Makefile` (listing \ref{lst:fw-makefile}).
+
+- The final target's basename (`$PROJECT`) is set up to be `perfgrade`
+  (producing binaries like `perfgrade.elf` and `perfgrade.bin`).
+- `$DEVICE` is set to `stm32f407vgt6`, which is the exact chip used in the
+  STM32F4 Discovery board. `libopencm3` will automatically generate a linker
+  script based on this definition.
+- `$OOCD_FILE` entries are commented out, but `board/stm32f4discovery.cfg` can be
+  set for debugging. OpenOCD is used later for testing the firmware in real
+  hardware. `rules.mk` references this variable in rules that make use of
+  OpenOCD (e.g. to flash firmware).
+- `$OPENCM3_DIR` isn't set in this file, but is required (set later on the
+  command line by Perfgrade). This variable points to a `libopencm3` tree that
+  has been pre-built - `make -C $OPENCM3_DIR` would be enough.
+- `$CFILES` and `$AFILES` are used to specify the C and assembly sources that
+  should be built and linked into the final firmware. In this case only the
+  startup code provided is listed. Perfgrade will redefine these variables on
+  the command line to include the actual student submission.
+
+### `util.S`
+
+``` {.nasm label="lst:fw-util" caption="Universal firmware utilities"}
+.syntax unified
+.thumb
+.section .text
+
+.global m5_exit
+m5_exit:
+  .short 0xEE00 | 0x21
+  .short 0x0110
+  bx lr
+```
+
+Listing \ref{lst:fw-util} shows the entire `src/util.S`. It provides a single
+"function" (whose signature is defined in `include/util.h`): `m5_exit()`. This
+is just an implementation of the `exit` `m5op` (as described in the gem5
+evaluation section). Since the `m5ops` use fake opcodes, assembler directives
+are used to write them into the output. The `bx lr` is actually unnecessary,
+since the simulation stops immediately upon encountering an `exit`.
+
+### `main.c`
+
+This file contains the actual `main()` function, which is called by
+`libopencm3`'s implementation of the reset handler (at `lib/cm3/vector.c` in the
+`libopencm3` source tree). The reset handler does a minimal set of tasks before
+calling `main()`, loading data into memory from the `.data` section, zeroing
+data in the `.bss` section and executing constructors.
+
+``` {.c label="lst:fw-main" caption="Unified firmware main function"}
+static inline bool is_sim(void) {
+    return SCB_CPUID == 0xcafebabe;
+}
+
+static inline void null_do(void) {
+    test();
+}
+static inline void null_finish(void) {}
+
+#pragma weak do_test = null_do
+#pragma weak finish_test = null_finish
+
+int main(void) {
+    if (!is_sim()) {
+        // Bring the clock up to 168MHz
+        rcc_clock_setup_pll(&rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_168MHZ]);
+
+        // TODO: Fine-grained cycle counting
+        dwt_enable_cycle_counter();
+        DWT_CYCCNT = 0;
+    }
+
+    do_test();
+__asm__("test_end:");
+    finish_test();
+
+    if (!is_sim()) {
+        // Clock down the CPU now that we're done
+        rcc_clock_setup_pll(&hsi_2mhz);
+    } else {
+        m5_exit(0);
+    }
+
+__asm__("eval_done:");
+
+    return 0;
+}
+```
+
+Listing \ref{lst:fw-main} shows (most of) `src/main.c`, with the definition of
+`hsi_2mhz` excluded. The definition and use of `is_sim()` shows the blocks of
+code which are simulator or hardware specific. It's possible to determine if the
+firmware is running in gem5 by reading the `SCB_CPUID` register, since it has a
+magic value written to it in the simulator case (as previously discussed).
+
+If not running in gem5, (i.e. `!is_sim()`), the `libopencm3` function
+`rcc_clock_setup_pll()` is used to set the core clock for the STM32F407. By
+default, the 16MHz internal oscillator is used to drive all clocks on the chip,
+(including `HCLK` / `SYSCLK`, the core clock [@stm32f407]. In order to maximise
+performance, the core clock is increased to 168MHz, which is the highest
+recommended value [@stm32f407vg].
+
+The process through which this is achieved is
+relatively complex, and involves a series of registers within the Reset and
+Clock Control (RCC) peripheral. These set the values for a number of clock
+divisors, multipliers and the Phased-Lock Loop (PLL). Each component has a its
+own range of operation, so each parameter must be balanced to achieve the final
+desired clock speed. Clocks for other components, such as on the peripheral
+bus (APB) must be considered. `rcc_clock_setup_pll()` abstracts away this
+process, making use of the PLL. `libopencm3` contains a set of preset
+configurations based around specific clock speeds -
+`rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_168MHZ]` uses the external 8MHz crystal
+oscillator to achieve a `HCLK` / `SYSCLK` of 168MHz.
+
+Once the clock is set up, the Data Watchpoint and Trace unit's (DWT) cycle
+counter is enabled and reset. This is used to count cycles (see the hardware
+evaluation section).
+
+`do_test()` is called to set up and execute the actual code being evaluated.
+`#pragma weak` is used to weakly set the value of this symbol to `null_do()`.
+Since special code might be required to set up and jump into the test code, the
+default provided by `null_do()` can then be redefined by an optional custom test
+harness that is linked in later. `__asm__()` is used to export a symbol
+`test_end` once `do_test()` returns to allow the address of the first instruction
+following test code completion to be determined programmatically.
+`finish_test()`, which is weakly assigned to `null_finish()` (which does
+nothing), can also be re-defined later if custom test cleanup code is needed.
+
+If the firmware is running in hardware, `rcc_clock_setup_pll()` is used again
+to reduce the core clock all the way down to 2MHz so that the microcontroller
+isn't left in an infinite loop at high frequency for an extended period once
+`main()` returns. `hsi_2mhz` configures all of the necessary clock components
+to run off of the internal oscillator with a final core clock of 2MHz. The
+complete configuration can be found in the non-abridged `src/main.c`.
+
+If the firmware is running in gem5, the `m5op` `exit` stops the simulation at
+this point. `eval_done` is exported for programmatic determination of the end
+of `main()` in real hardware.
+
 ## Hardware evaluation
 
 ### Tracing
 
 Hardware tracing was attempted for this project, although this avenue ultimately
 proved impractical.
-
-## Unified firmware
 
 ## Perfgrade platform
 
