@@ -577,9 +577,9 @@ or diagrams might help to show why a submission received a particular grade.
 
 ## High-level components
 
-![Main system components\label{fig:high_level}](img/high_level_generic.jpg)
+![Main system components\label{fig:high_level_generic}](img/high_level_generic.jpg)
 
-Figure \ref{fig:high_level} shows the primary components in the Perfgrade
+Figure \ref{fig:high_level_generic} shows the primary components in the Perfgrade
 system, along with high-level interactions.
 
 ### Autograding platform
@@ -2644,6 +2644,12 @@ To install Perfgrade itself, Python 3.6+ is required. Once ready, run
 `pip3 install .` from the `app/` directory. This will fetch and install all of
 the Python library dependencies.
 
+#### `libopencm3` setup
+
+Setting up `libopencm3` for Perfgrade is relatively easy. Once an
+`arm-none-eabi` toolchain is installed, `make` can be executed from the
+`libopencm3` source tree.
+
 #### gem5 setup
 
 In order to set up gem5, clone and build the fork of gem5 created for this
@@ -2668,7 +2674,834 @@ For detailed example pipelines, see `app/examples/`.
 
 # Evaluation
 
+In order to test the effectiveness and validity of the complete Perfgrade
+system, an autograding deployment mirroring that of the real Introduction to
+Computing setup was created (based on Submitty). First year students were then
+given the opportunity
+to submit three of their previous assignments from Part II of the Intro to
+Computing course (anonymously). Following this, they could complete a short
+survey on the usefulness of the automated performance feedback they received. A
+short "guest lecture" session was given to explain the project and the system.
+
+## Assignment pipelines
+
+The assignments chosen for the student evaluation / demo were the first three
+given for Introduction to Computing II:
+
+- `arraymove` ("Arrays"). Implementation of a program that moves
+  an element in an array, taking care to shift other elements along as needed.
+- `subarray` ("2D Arrays"). A program to determine if a 2D array is wholly
+  contained within another. *This will be the focus of this report.*
+- `expressions` ("Reverse Polish Notation" / "Stacks"). Reverse Polish Notation
+  expression calculator.
+
+A set of three Perfgrade pipelines ("Build", "Correctness" and "Performance")
+was created to handle grading of each assignment. These three distinct pipelines
+match the diagram in figure \ref{fig:high_level_generic} and additionally make
+integration with Submitty a little easier. Each key step will be explained, with
+snippets from the YAML files included where appropriate. Only the
+pipelines written for
+`subarray` will be detailed in this section, since they are relatively similar
+for each of the other assignments. All of the pipelines are available under
+`app/examples/` (each in their own subdirectories).
+
+### Common
+
+Contains a number of utilities which are used across all three pipelines.
+
+#### `defines`
+
+A `passthrough` step that declares:
+
+- `SQUARE_SPACE`: the amount of total `.bss` space to allocate for the input
+  outer 2D array
+- `SUB_SPACE`: the amount of `.bss` space to allocate for the input "subarray"
+
+#### `encode`
+
+\hfill
+
+```python
+def encode(item, ss, sss):
+    def write(a, pad=0):
+        size = len(a[0])
+        data = bytearray(struct.pack('<I', size))
+        for row in a:
+            assert len(row) == size
+            data.extend(struct.pack('<'+('I'*size), *row))
+        if len(data) < pad:
+            data.extend([0]*(pad - len(data)))
+        return data
+    return write(item.square, pad=4+ss) + write(item.sub, pad=4+sss)
+self.output = encode
+```
+
+An `exec` step that defines a helper function to encode the larger and smaller
+2D arrays into a single block of data in the format expected by the test
+program (which includes the size of the arrays prepended to the actual
+elements). This allows for easy generation of test cases. Python's `struct`
+module simplifies the process. The arguments to the function are:
+
+- `item`: An object with two Python 2D arrays, `square` and `sub`, representing
+  the outer and inner arrays
+- `ss`: The value of `SQUARE_SPACE` (for appropriate padding)
+- `sss`: The value of `SUB_SPACE` (for appropriate padding)
+
+### Build
+
+```yaml
+steps:
+  - id: common
+    type: include
+    input: common.yaml
+
+  - id: build
+    type: build
+    description: Build test code
+    input:
+      opencm3: /opt/libopencm3
+      uut: subarray.s
+      harness: subarray_harness.s
+      defines: !expr common.defines
+
+  - type: copy
+    description: Copy build results
+    input:
+      - src: !expr build.elf
+        dst: perfgrade.elf
+      - src: !expr build.rom
+        dst: perfgrade.bin
+```
+
+The entire definition for the build pipeline is shown above, which is
+responsible for assembling the unified firmware used for both correctness and
+performance evaluation. This pipeline is fairly self-explanatory, with the
+common definitions `include`d before using the `build` step to perform the
+actual build. Finally, the raw firmware and ELF binary are copied out of their
+temporary storage so they can be used by both the Correctness and Performance
+pipelines.
+
+```nasm
+.syntax unified
+.thumb
+.section .text
+
+.global do_test
+do_test:
+  push {r4-ip, lr}
+
+  ldr r0, =square
+  ldr r1, =size
+  ldr r1, [r1]
+
+  ldr r2, =sub
+  ldr r3, =sub_size
+  ldr r3, [r3]
+  bl Main
+
+  ldr r1, =result
+  str r0, [r1]
+
+  pop {r4-ip, pc}
+```
+
+Note the custom test harness used. This code exports the required `do_test()`
+function for the unified firmware. `do_test()` loads the parameters expected by
+the solution program from memory and branches to `Main`, the entrypoint to the
+student's code. The result is then written back to memory, where it can be read
+to check the output. All of the callee-saved registers are `push`'d and `pop`'d
+in case `Main` clobbers them.
+
+```nasm
+.section .bss
+
+.global size
+.global square
+
+.global sub
+.global sub_size
+
+size: .word 0
+square: .space SQUARE_SPACE
+
+sub_size: .word 0
+sub: .space SUB_SPACE
+
+.global result
+result: .word 0
+```
+
+All of the memory values are in the `.bss` section so that the evaluator
+(software or hardware) can read and write them.
+
+### Correctness
+
+This pipeline is analagous to the existing autograding already performed for
+Introduction to Computing, loading a test case and inspecting memory upon
+completion to ensure the student's submission can produce the correct output.
+
+#### `cases`
+
+\hfill
+
+```yaml
+type: passthrough
+description: Set up test cases
+input:
+  input:
+    - name: Default
+      square:
+        - [1,1,1,1,1,1,1]
+        - [1,1,1,1,1,1,1]
+        - [1,1,1,1,1,1,1]
+        - [2,2,2,2,1,1,1]
+        - [2,2,2,2,1,1,1]
+        - [2,2,2,2,1,1,1]
+        - [2,2,2,2,1,1,1]
+      sub:
+        - [2,2,2,2]
+        - [2,2,2,2]
+        - [2,2,2,2]
+        - [2,2,2,2]
+      expect: true
+  a: []
+  b: []
+  correct: 0
+```
+
+Sets up a list of test cases to run the student's program over, in this example
+there is only the original sample case.
+
+#### `eval_cases`
+
+This is a `mapped` step (over the test case array defined in the previous step)
+which runs `gem5` to execute the assembled firmware with each test case.
+
+```yaml
+id: eval
+type: evaluate
+description: !expr f'Evaluate "{item.name}" ({item.expect})'
+input:
+  type: simulation
+  timeout: 10
+
+  gem5: /opt/gem5
+  variant: fast
+
+  firmware: perfgrade.bin
+
+  test_data:
+    addr: !expr symtab['size']
+    data: !expr common.encode(item, common.defines.SQUARE_SPACE, common.defines.SUB_SPACE)
+    when: !expr symtab[('main', 2)]
+
+  dump_ranges:
+    - start: !expr symtab['result']
+      size: 4
+```
+
+The `evaluate` step loads the test case into memory at `size` (from the symbol
+table); all of the data needed is contiguous and `common.encode()` will produce
+the correct data. Note that the data is only loaded when `main` is reached,
+since `libopencm3`'s initialization routines will zero out the `.bss` section.
+The `result` value is dumped for comparison with the expected value (a boolean
+indicating whether or not the smaller square was a subarray).
+
+```yaml
+id: result
+type: exec
+description: Parse result
+input: |
+  b = True if struct.unpack('<I', eval.dump[0])[0] == 1 else False
+  cases.a.append(f'{item.name} is subarray: {item.expect}')
+  cases.b.append(f'{item.name} is subarray: {b}')
+  if b == item.expect:
+      cases.correct += 1
+```
+
+After evaluation, the `a` and `b` lists are updated with strings which should be
+equal based on the expected and real booleans. These will be fed into a `diff`
+step later. The total number of correct test cases is counted.
+
+#### `compare` / `write_diff`
+
+Uses a `diff` and `exec` step to compare `cases.a` to `cases.b`. This will be
+written to a file (`diff.txt`) which will show a human-friendly summary of
+any incorrect test cases.
+
+#### `write_submitty_results`
+
+Generates a JSON file in the structure required by Submitty to set the score
+of the Correctness step (discuessed later).
+
+### Performance
+
+The pipeline which actually performs all of the performance analysis.
+
+#### `trace_case` / `trace_eval`
+
+Two steps which are very similar to the `cases` and `eval_cases` steps in the
+correctness pipeline. The steps used to read the result from memory after
+execution has completed have been removed since whether or not the result is
+correct is not relevant when checking performance.
+
+#### `traces` / `extra_traces` / `trace_count`
+
+\hfill
+
+```yaml
+  - id: traces
+    type: load_traces
+    input:
+      gem5: /opt/gem5
+      file: !expr trace_eval.traces
+  - id: extra_traces
+    type: augment_traces
+    input:
+      elf: perfgrade.elf
+      traces: !expr traces
+  - id: trace_count
+    type: cycle_count
+    input:
+      traces: !expr traces
+      first_pc: !expr symtab['Main']
+      last_pc: !expr symtab['test_end']
+```
+
+These three steps load the traces generated by the gem5 simulation step and
+count the number of CPU cycles spent executing the student's submission. Note
+the use of `Main` and `test_end` to restrict cycle counting to student code
+only.
+
+#### `heatmap` / `heatmap_pdf`
+
+\hfill
+
+```yaml
+type: heatmap
+input:
+  source: subarray.s
+  compilation_unit: src/uut.S
+
+  traces: !expr extra_traces
+  total_cycles: !expr trace_count.cycles
+
+  html_out: heatmap.html
+```
+
+Generates a heatmap from the simulation's traces and cycle count. `heatmap_pdf`
+uses `wkhtmltopdf` to render the HTML document for use with Submitty.
+
+#### `trace_eval_hw` / `hw_traces` / `hw_count`
+
+\hfill
+
+```yaml
+type: hardware
+timeout: 10
+
+start_addr: !expr symtab['Main']
+done_addr: !expr symtab['test_end']
+probes:
+  # Attached to server
+  - 0668FF303430484257255736
+  - 066DFF303430484257142139
+extra_options:
+  pack: /opt/perfgrade/stm32f4.pack
+```
+
+These steps run the same evaluation as the previous steps, but in hardware. The
+snippet above shows the key different parameters provided to the `evaluate` step
+so that the execution takes places correctly in hardware. The cycle count is
+then calculated from the fake trace data as a comparison point to the simulated
+value.
+
+#### `perf_cases`
+
+\hfill
+
+```yaml
+type: exec
+description: Generate test cases for performance curve
+input: |
+  self.output = Box(sizes=[2, 4, 6, 8, 12, 16, 20, 28, 32, 48, 52, 64], datas=[])
+  for n in self.output.sizes:
+      # Worst-case! (not present at all)
+      case = Box(square=[[123]*n]*n, sub=[[456]*2]*2)
+      self.output.datas.append(common.encode(case, common.defines.SQUARE_SPACE, common.defines.SUB_SPACE))
+```
+
+An `exec` step which generates a number of test cases to evaluate the submission
+with different input sizes. Note that the "worst-case" is used: the program
+should search the entire outer 2D array looking for the subarray (which doesn't
+exist). Also note that only the size of the outer array is varied.
+
+#### `perf_evals`
+
+A `mapped` step similar to the `trace_eval_hw` + `hw_traces` + `hw_count`
+combination which evaluates each of the generated performance cases in hardware
+and counts the cycles taken. Hardware evaluation is used since it runs _a lot_
+faster than gem5 (important as input sizes grow). `parallel: 2` is used so that
+multiple evaluations can run at the same time (on the two available boards).
+
+#### `cycles` / `loglog`
+
+\hfill
+
+```yaml
+  - id: cycles
+    type: passthrough
+    description: Collect cycles
+    input: !expr 'list(map(lambda m: m.count.cycles, perf_evals))'
+
+  - id: loglog
+    type: passthrough
+    description: Calculate log-log slope
+    input: !expr np.polyfit(np.log(perf_cases.sizes), np.log(cycles), 1)[0]
+```
+
+Two `passthrough` steps which together calculate the log-log slope from the
+cycle counts of the performance evaluations (as described in the design
+section). The `cycles` step is needed to translate the list of objects produced
+by the `mapped` step into a single list of cycle counts. numpy's `polyfit`
+function is then used to calculate the slope of a log-log plot of input sizes
+against cycle counts.
+
+#### `grade`
+
+\hfill
+
+```yaml
+type: bucket_grade
+input:
+  value: !expr loglog
+  xlabel: log-log slope (O(n^x))
+  graph_file: grade.pdf
+  buckets:
+    - max: 2.2
+    - max: 2.5
+      max_grade: 0.8
+    - max: 3
+      max_grade: 0.6
+    - max: 3.2
+      max_grade: 0.2
+```
+
+`bucket_grade` step that takes the log-log slope and uses it to calculate the
+final performance grade. Since the outer array is 2D, the solution should run in
+approximately $O(n^2)$, hence the highest grade being attainable by having a
+slope of 2.2 or less. The grade curve is written out to a PDF (as required for
+Submitty later).
+
+#### `functions` / `complexity`
+
+\hfill
+
+```yaml
+- id: functions
+  type: passthrough
+  description: Common performance functions
+  input:
+    eval:
+      linear: !expr 'lambda x, k, c: k * x + c'
+      squared: !expr 'lambda x, k, c: k * x ** 2 + c'
+      cubed: !expr 'lambda x, k, c: k * x ** 3 + c'
+      hypercubed: !expr 'lambda x, k, c: k * x ** 4 + c'
+      log: !expr 'lambda x, k, c: k * np.log10(x) + c'
+      nlog: !expr 'lambda x, k, c: k * x * np.log10(x) + c'
+    str:
+      linear: O(n)
+      squared: O(n^2)
+      cubed: O(n^3)
+      hypercubed: O(n^4)
+      log: O(log n)
+      nlog: O(n * log n)
+
+- id: complexity
+  type: curve_guess
+  description: Estimate complexity
+  input:
+    functions: !expr functions.eval
+    data:
+      x: !expr perf_cases.sizes
+      y: !expr cycles
+```
+
+These steps attempt to guess the complexity of the submission using the
+`curve_guess` step type. `function` shows all of the function types that will be
+guessed, along with human-readable big-O representations.
+
+#### `perf_plot`
+
+\hfill
+
+```yaml
+type: exec
+description: Generate performance plot
+input: |
+  fig, ax = plt.subplots()
+  ax.set_title('Performance curve')
+  ax.set_xlabel('Array size')
+  ax.set_ylabel('CPU Cycles')
+
+  ax.plot(perf_cases.sizes, cycles, 'ro', label='Evaluated data')
+  x = np.linspace(perf_cases.sizes[0], perf_cases.sizes[-1], num=128)
+  ax.plot(x, functions.eval[complexity.function](x, *complexity.params), label=f'Fitted {functions.str[complexity.function]} function')
+
+  ax.legend()
+  fig.savefig('curve.pdf')
+```
+
+An `exec` step that uses matplotlib to generate the "performance curve" as
+described in the design section. Note that the guessed function from the
+previous step is drawn alongside the real points. The graph is also saved as a
+PDF to be picked up by Submitty later.
+
+#### `stats` / `write_submitty_results`
+
+These two steps generate human-readable statistics from the previous steps, as
+well as a Submitty-compatible JSON file containing the final performance grade.
+
 ## Submitty integration
+
+![Perfgrade system components with Submitty as the "autograding platform"\label{fig:high_level}](img/high_level.jpg)
+
+Figure \ref{fig:high_level} is an updated version of figure
+\ref{fig:high_level_generic}, showing (approximately) Submitty's role in the
+system as the autograding platform. Submitty was chosen for this purpose since
+it is already used for autograding in Introduction to Computing, making the
+evaluation deployment directly comparable and familiar to students.
+
+### Basic setup
+
+![Dell PowerEdge R720 server used for evaluation (with 2 STM32F4 discovery boards)\label{fig:deployment_hardware}](img/deployment_hardware.jpg)
+
+Using the existing SCSS deployment of Submitty was not an option for this
+project, for a multitude of reasons, privacy and stability of the system being
+top concerns. It was therefore necessary to deploy Submitty itself as the
+initial step in the evaluation deployment process. Figure
+\ref{fig:deployment_hardware} shows the Dell PowerEdge R720 server that was used
+for the test setup, including two boards connected that will later be used for
+hardware evaluation. Note that the server is mainly for personal use and is
+running a significant number of existing services, which influenced the
+deployment methodology.
+
+As alluded to previously, the installation of Submitty demands quite a
+specific environment: a Ubuntu 18.04 Server VM [@submitty_installation]. Due to
+limited hypervisor capacity on the server, an LXD-based container was used
+instead (an existing VM has resources available to allocate to a number of LXD
+containers). LXD containers use similar technology to Docker, but aim to replicate
+a VM-style system environment [@lxd]. Since an official Ubuntu 18.04 image is
+provided by Canonical, there were relatively few additional steps needed to
+install Submitty beyond those specified in the documentation.
+
+Once installed, it was possible to create a test course by following the
+standard system administrator course creation documentation. At this point, only
+a single admin user is being used to test the deployment - anonymous signups
+will be needed later.
+
+### Preparing the OS for Perfgrade
+
+In order for Perfgrade to be usable from within Submitty, it was necessary to
+install it from scratch. Unfortunately due to the way Submitty performs grading,
+with its own dedicated UID's, "isolation" and use of `rlimit`s, it was not
+possible to use the Docker image. The installation was done within a Python
+virtual environment, which simplifies dependency management and prevents
+interference with the system-wide installation of Python [@venv]. gem5 was
+compiled on the workstation machine used to develop this project, since its
+AMD Ryzen Threadripper CPU cut down the build time significantly. The same LXD
+image was used to make sure dependencies would link correctly, and the source
+tree was simply copied over.
+
+### Connecting STM32F4 boards
+
+Since the Submitty installation was deployed in an LXD container within a
+virtual machine, making the 2 STM32F4 Discovery boards (pictured in figure
+\ref{fig:deployment_hardware}) accessible to Perfgrade was a little convoluted.
+The virtual machine was QEMU-based, using libvirt for management. Since
+QEMU natively supports USB emulation, and libvirt exposes this feature, it was
+possible to pass the two boards from the hypervisor OS layer through to the
+LXD VM, referencing the devices by their bus locations. Once accessible in the
+LXD host, it was possible to "pass through" both boards by their common
+`vendor_id:product_id` pair. It was also necessary to set the permissions on the
+`/dev/bus/usb` nodes to world-writable so that unprivileged grading processes
+could access them.
+
+### Configuring the assignments
+
+Some work was required to configure Submitty to make use of the pipelines
+created for automated grading of the three Introduction to Computing II
+assignments. This is mainly due to the fact that Submitty's assignment
+configuration system is set up to facilitate specific types of assignments in
+specific programming languages. Much of this is likely a result of being
+developed initially for internal courses only. Regardless, it was possible to
+set up a file structure to achieve the desired autograding setup. A
+`config.json` file tells the autograding system in Submitty how an assignment
+should be graded [@submitty_autograding].
+
+To simplify development, the config file was written in YAML. It was trivial to
+then convert this file into the required JSON format for use by Submitty. Each
+part of the config file will be explained in this section, within the
+context of the `subarray` assignment. The complete definition is located at
+`app/examples/subarray/config.yaml`. The other two assignments have very
+similar config files in their own directories.
+
+All steps in the autograding process for Submitty use a "`testcase`", whether or
+not they are actually testing something. Each of the Perfgrade pipelines
+discussed previously have their own `testcase`, which generally has a command
+to run and a number of `validation` objects. Validation objects are responsible
+for deducting points and producing output in the results section of the web
+interface.
+
+``` {.bash label="lst:submitty-bypass" caption="Submitty command filter bypass script"}
+#!/bin/sh
+exec venv-run --venv /opt/perfgrade -- perfgrade "$@"
+```
+
+**Note:** Submitty has a peculiar feature where only certain commands may be
+provided for a `testcase`. These must be either on a pre-approved list (which is
+hardcoded in a C++ file), or start with `./` (i.e. be paths relative to the
+current directory). This is probably something left over from the initial
+internal-only version of the system. Because of this, it's not possible to run
+a command like `perfgrade` directly. To solve the issue, a simple shell script
+(shown in listing \ref{lst:submitty-bypass}) was created. This script simply
+executes the `perfgrade` command with the provided arguments. `venv-run` is
+used because Perfgrade was installed in a Python virtual environment (so
+`perfgrade` would not be on the default `$PATH`).
+
+#### `testcase`: "Assemble and link ARM program"
+
+\hfill
+
+```yaml
+type: Compilation
+title: Assemble and link ARM program
+command: ./perfgrade.sh build.yaml
+executable_name: perfgrade.bin
+points: 2
+validation:
+  - method: fileExists
+    description: Perfgrade log (stderr)
+    actual_file: STDERR.txt
+    show_actual: always
+    deduction: 0
+  - method: fileExists
+    description: Make log (stdout)
+    actual_file: STDOUT.txt
+    show_actual: always
+    deduction: 0
+```
+
+Corresponds to the "Build" pipeline:
+
+- `type` is set to `Compilation`, which puts this testcase in the "Compilation"
+  autograding phase.
+- `command` simply executes the Build pipeline.
+- `executable_name` identifies the main output of the build step.
+- 2 `points` are given for the build passing successfully. If the `command`
+  fails, no points will be awarded.
+- Two `fileExists` validators are used to show the Perfgrade
+  log (which is written to `stderr` that Submitty redirects to `STDERR.txt`) and
+  `make` command log (which is written to `stdout`).
+  - Setting `show_actual` to `always` means that Submitty will always render
+    these files in the web UI, whether or not the `command` succeeded.
+  - `deduction` is 0 since the points will be deducted if the `command` fails anyway.
+
+#### `testcase`: "Correctness"
+
+\hfill
+
+```yaml
+title: Correctness
+command: ./perfgrade.sh correctness.yaml
+points: 4
+validation:
+  - method: custom_validator
+    command: cp test02/validation_results.json .
+    description: Correctness check
+    actual_file: validation_results.json
+    show_actual: never
+    deduction: 1
+  - method: errorIfNotEmpty
+    description: Output difference
+    actual_file: diff.txt
+    show_actual: on_failure
+    deduction: 0
+```
+
+Executes the Correctness pipeline:
+
+- `type` is unset (defaulting to `Execution`), meaning the testcase runs in the
+  "Execution" phase.
+- The first validator is of type `custom_validator`, which typically runs a
+  command to perform validation in the "Validation" phase. However, to make
+  pipeline design easier, the results are generated in the Correctness pipeline
+  (as previously explained).
+  - The "validation command" just copies the appropriate JSON file.
+  - `show_actual` is set to `never` since this file shouldn't be seen by users.
+  - `deduction` is set to 1. This is set to 1 and not 4 because Submitty adds
+    all of the deduction values up to 1 to determine the proportion of points
+    that should be deducted from the title.
+- The second validator is `errorIfNotEmpty` on the `diff.txt` file, which will
+  be empty if all of the correctness cases matched.
+- Not shown here are the same `stderr` and `stdout` "validators" used to show
+  the logs from Perfgrade in the web UI.
+
+#### `testcase`: Performance
+
+\hfill
+
+```yaml
+title: Performance
+command: ./perfgrade.sh performance.yaml
+points: 4
+validation:
+  - method: errorIfEmpty
+    description: Statistics
+    actual_file: stats.txt
+    deduction: 0
+  - method: errorIfEmpty
+    description: Heatmap
+    actual_file: heatmap.pdf
+    deduction: 0
+  - method: errorIfEmpty
+    description: Grade curve
+    actual_file: grade.pdf
+    deduction: 0
+  - method: errorIfEmpty
+    description: Performance curve
+    actual_file: curve.pdf
+    deduction: 0
+```
+
+Executes the Performance pipeline, mostly the same as the Correctness
+`testcase`. The validators for validation results JSON (for the performance
+grade) and Perfgrade logs are not shown. `errorIfEmpty` validators are used to
+show the statistics, heatmap, grade curve and performance curve in the web UI.
+Note that all of the visualisations are in PDF format, as most other filetypes
+will be printed in text form (a hardcoded exception exists for PDF files,
+which are embedded as `<iframe>`s).
+
+#### File management
+
+\hfill
+
+```yaml
+autograding:
+  submission_to_compilation: [subarray.s]
+
+  submission_to_runner: [subarray.s]
+  compilation_to_runner: [perfgrade.sh, common.yaml, correctness.yaml, performance.yaml, perfgrade.elf, perfgrade.bin]
+
+  work_to_public: [test03/heatmap.pdf, test03/grade.pdf, test03/curve.pdf]
+```
+
+For each phase of autograding, Submitty needs to
+know which files should be carried from to the next. While all three phases
+("Compilation", "Execution" and "Validation" are technically used, Perfgrade
+pipelines are only ever used in the "Compilation" and "Execution" phases.
+
+1. All of the required files (pipelines and associated extras) are placed in the
+   `provided_code` directory, which Submitty automatically copies into the
+   compilation phase working directory.
+2. `subarray.s`, the student's submitted source code, is required in the
+  "compilation" phase for the "Build" pipeline, so it is included in the
+  `submission_to_compilation` array (in order for Submitty to copy it into the
+  appropriate working directory).
+3. `subarray.s` is also required for the execution phase (for heatmap
+   generation), so it is included in the `submission_to_runner` array.
+4. `compilation_to_runner` lists all the files that should be copied from the
+   Compilation to Execution phase. Since both the Correctness and Performance
+   pipelines run in the Execution phase, this is most of the files.
+5. `work_to_public` specifies files that should be copied to the public HTTP
+   directory (per-user). This includes all of the PDF's generated. Other files
+   are embedded directly in the PHP template generated by Submitty.
+
+#### `rlimit`s
+
+\hfill
+
+```yaml
+resource_limits:
+  RLIMIT_CPU: 600
+  RLIMIT_NPROC: 1000
+  RLIMIT_STACK: 10000000
+  RLIMIT_DATA: 4000000000
+  RLIMIT_FSIZE: 0x8000000
+```
+
+Submitty enforces `rlimit`s on all autograding processes. The values above are
+quite generous, owing to the fact that gem5 can use quite a lot of CPU and
+memory.
+
+### Creating Gradeables
+
+Once all of the autograding configuration for Submitty has been created, it can
+be copied to the Submitty server (with `config.yaml` converted to
+`config.json`). Following the standard documentation, a "Gradeable" can be
+created for each assignment, and the autograding configuration is then assigned
+to it. `BUILD_<course>.sh` rebuilds all of the gradeables for the test course.
+
+### Public access and anonymous signup
+
+``` {label="lst:submitty-nginx" caption="Submitty nginx config"}
+server {
+	listen 443 ssl http2;
+	server_name submitty.nul.ie;
+
+	location /signup/ {
+		set $backend "http://submitty.lxd.h.nul.ie:8080/";
+		proxy_pass $backend;
+	}
+	location / {
+		set $backend "http://submitty.lxd.h.nul.ie";
+		proxy_pass $backend;
+	}
+}
+```
+
+In order for students to submit their solutions, the Submitty server must be
+publicly accessible over the internet and anonymous signup is needed. Since
+Submitty does not natively provide any form of user registration system, a
+basic web application was written in Go to facilitate this. Listing
+\ref{lst:submitty-nginx} shows the nginx reverse proxy configuration snippet
+used to make Submitty accessible over the internet, along with the registration
+system. Note that the nginx server used here is used for a number of other
+unrelated services and is therefore pre-configured to be accessed over TLS with
+appropriate certificates and DNS records. The hostnames for the backends come
+from an internal DNS server.
+
+``` {label="lst:submitty-anon" caption="Submitty anonymous signup SQL"}
+if _, err := tx.ExecContext(
+	ctx,
+	`INSERT INTO users (user_id, user_password, user_firstname, user_lastname, user_access_level, user_email, time_zone) VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+	info.Username, string(pwHash), "Anonymous", id, s.config.Submitty.AccessLevel, "", "Europe/Dublin",
+); err != nil {
+	tx.Rollback()
+	return info, fmt.Errorf("failed to write user into database: %w", err)
+}
+
+if _, err := tx.ExecContext(
+	ctx,
+	`INSERT INTO courses_users (semester, course, user_id, user_group, registration_section) VALUES ($1, $2, $3, $4, $5);`,
+	s.config.Submitty.Semester, s.config.Submitty.Course, info.Username, s.config.Submitty.Group, strconv.Itoa(s.config.Submitty.RegistrationSection),
+); err != nil {
+	tx.Rollback()
+	return info, fmt.Errorf("failed to write user into course database: %w", err)
+}
+```
+
+The exact details of `submitty-anon`, the Go web application that allows for
+anonymous signups, will not be explained here. Listing \ref{lst:submitty-anon}
+shows the snippet that makes the necessary insertions into the Submitty
+PostgreSQL database. The full source code for this application is available in
+the `submitty-anon` subdirectory.
+
+With the above pieces in place, students can visit
+[https://submitty.nul.ie/signup/](https://submitty.nul.ie/signup/), where a
+brief overview of the project is given.
+Upon clicking a button, they will receive a randomly generated username and
+password with which to log in and submit assignments.
 
 \newpage
 
