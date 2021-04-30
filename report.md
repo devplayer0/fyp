@@ -1934,8 +1934,8 @@ definitions. Each step has a number of attributes:
 
 An additional element seen in Listing \ref{lst:perfgrade-simple} is `!expr`,
 which comes after the YAML key but before its value. A lesser-known feature,
-tags indicate the underlying type of a value (it is always implied but can be
-specified for any node) [@yaml_spec]. The `expr` tag is picked up by Perfgrade
+tags, indicate the underlying type of a value. A tag is always implied but can be
+explicitly specified for any node [@yaml_spec]. The `expr` tag is picked up by Perfgrade
 and indicates that the value corresponding to the given key should be
 evaluated as a Python expression. For example, `src: !expr build.elf` in listing
 \ref{lst:perfgrade-simple} means that the value of `src` will be dynamically
@@ -1948,7 +1948,8 @@ Since the Perfgrade platform is written in Python, a language with object-orient
 features, each of the step `type`s is implemented as a class inheriting from a
 base `Step`. This class defines a number of methods and defines some common
 behaviour, with the `run()` method needing to be implemented by all subclasses
-to provide an actual action to be taken.
+to provide an actual action to be taken. `close()` can be implemented to perform
+any cleanup when Perfgrade is shutting down.
 
 Notably, `Step` provides `_eval_input()`, which is an internal method that
 traverses the `input` tree and evaluates any `!expr`-tagged values as
@@ -1997,8 +1998,12 @@ This provides a convenient way to define via YAML a set of values to be
 referenced in later steps, with the added capability to add Python expressions
 at any level in the tree.
 
+All expressions have access to the following standard modules: `struct`,
+`random`, `sys`, `os` and `os.path` (as `path`). In addition, the following
+external libraries are included by default: `box.Box` (as `Box`), `numpy`
+(as `np`) and `matplotlib.pyplot` (as `plt`).
 
-### Available step types
+### Basic steps
 
 #### `exec`
 
@@ -2010,7 +2015,8 @@ type is akin to the `run:` value in a GitHub Actions step.
 
 _Inputs:_
 
-The input value is a string, which is parsed as a Python script. Use of the
+The input value is a string, which is parsed as a Python script. All of the
+modules included for `!expr` values are also included here. Use of the
 YAML literal block indicator is recommended [@yaml_multiline].
 
 _Outputs:_
@@ -2082,20 +2088,24 @@ input:
     dst: /tmp/man
 ```
 
+### Evaluation steps
+
 #### `build`
 
-Builds a universal firmware (see the dedicated section for further details).
+Builds a unified firmware (see the dedicated section for further details).
 
 _Inputs:_
 
-- `opencm3`: Path to pre-built `libopencm3` tree
-- `uut`: Path to the "unit under test" assembly source file
+- `opencm3`: Path to pre-built `libopencm3` tree.
+- `uut`: Path to the "unit under test" assembly source file.
 - `harness`: Path to an optional test harness (`.c` for C or `.s`/`.S` for
-   assembly)
-- `defines`: Optional array of preprocessor defines (key is the name of the
-   define)
+  assembly). This source should export a `do_test()` function to replace the
+  default implementation (this simply calls `test()`) which sets up and
+  executes the test code.
+- `defines`: Optional array of preprocessor defines to set (key is the name of
+  the define).
 - `rom`: Whether or not to produce a raw firmware from the final ELF (defaults
-   to `True`)
+  to `True`).
 
 _Outputs:_
 
@@ -2110,7 +2120,7 @@ step if they are required after a pipeline has finished executing.
 
 _Example:_
 
-```
+```yaml
 id: build
 type: build
 input:
@@ -2123,27 +2133,496 @@ input:
 
 #### `symtab`
 
+Loads the symbol table from an ELF binary, utilising the `pytelftools` library.
+`pyelftools` is "a pure-Python library for parsing and analyzing ELF files and
+DWARF debugging information" [@pyelftools].
+
+_Inputs:_
+
+A single string, which is the path to an ELF binary.
+
+_Output:_
+
+A `SymbolResolver`. This can be used to look up the address of a symbol in the
+ELF's symbol table, accessed as with a dictionary (using `dict['key']` syntax).
+If a tuple of `('symbol', n)` is used as the key instead of just a symbol name,
+the returned address will have its lowest `n` bits masked off (useful for
+de-Thumb'ifying function addresses, which sometimes have the LSB set to force
+a switch to Thumb mode).
+
+_Example:_
+
+```yaml
+steps:
+  - id: tab
+    type: symtab
+    input: perfgrade.elf
+
+  - type: exec
+    input: |
+      print(f'Address of entrypoint: {symtab[("_start", 2)]}')
+```
+
 #### `evaluate`
+
+Performs evaluation of programs, either in software with gem5 or in hardware
+with a real STM32F4 Discovery board (via pyOCD). Should be used with a unified
+firmware (as described in the dedicated section).
+
+In `simulation` mode, the
+evaluation setup described in the "gem5 evaluation" section is used. The
+appropriate gem5 command is constructed and executed, with data being collected
+from the output directory.
+
+In `hardware` mode, pyOCD is used to manage real boards (as described) in the
+"hardware evaluation" section. Since opening and closing connection to a board
+is quite expensive with pyOCD, connections are pooled globally. Connections are
+only closed either when they have been unused for more than 20 seconds or
+Perfgrade is shutting down.
+
+_Inputs:_
+
+Common (both modes):
+
+- `type`: Mode to run in. `simulation` (for software / gem5) or `hardware`,
+  required.
+- `firmware`: Path to a raw unified firmware binary, required.
+- `timeout`: Maximum amount of evaluation time (seconds). If exceeded, an
+  exception is raised, if unspecified no timeout is enforced.
+- `debug`: Print extra logging information, defaults to false.
+- `gem5`: Path to gem5 source tree. Required for simulation mode. If specified
+  in hardware mode, a dummy trace file will be generated.
+- `test_data`: Object specifying test data to load into memory:
+  - `addr`: Address to load test data to, required
+  - `data`: Path to file to be loaded at `addr` (binary), required
+  - `when`: PC value to wait for before loading data, optional
+- `dump_ranges`: Array, each element contains a range of memory to dump on
+  evaluation completion:
+  - `start`: Start address of range to dump, required
+  - `size`: Size of range to dump, required
+
+`simulation`-only:
+
+- `variant`: The gem5 build variant to use, defaults to `fast`.
+- `config`: Configuration script name (without `.py`). Choices are in
+  `app/perfgrade/gem5_config/`, defaults to `stm32f4`.
+- `extra_args`: List of additional command line arguments to pass to gem5.
+
+`hardware`-only:
+
+- `target`: pyOCD target to use, defaults to `stm32f407vg`.
+- `probes`: List of probe ID's to use. Connected probes can be listed by running
+  `pyocd list --probes`.
+- `cycles_addr`: Address of 32-bit integer to read cycle count from, defaults to
+  the address of `DWT_CYCCNT`.
+- `start_addr`: Address of starting dummy trace instruction, optional.
+- `end_addr`: Address of final dummy trace instruction, optional.
+- `extra_options`: A dict of additional options to pass to
+  `pyocd.core.session.Session(options=options)`, optional.
+
+_Outputs:_
+
+- `dump`: A list of byte arrays representing each of the requested memory ranges
+  provided in `dump_ranges`.
+- `trace`: Path to a *temporary* file containing trace data in the protobuf
+  format described in the "gem5 evaluation" section. In hardware mode this will
+  only be provided if the `gem5` option was set. Since hardware tracing is not
+  implemented, a "fake" trace file is generated. This contains only 2 trace
+  entries: a start and end instruction, which is still useful for calculating
+  the total cycle count (e.g. via the `cycle_count` step).
+
+_Examples:_
+
+```yaml
+type: evaluate
+input:
+  type: simulation
+  timeout: 5
+  debug: true
+
+  gem5: /opt/gem5
+  variant: opt
+
+  firmware: 'perfgrade.bin'
+
+  test_data:
+    addr: !expr symtab['loop_size']
+    data: !expr struct.pack("<I", 30)
+    # For some reason main mis-aligned (to force switch to Thumb?)
+    when: !expr symtab[('main', 2)]
+```
+
+```yaml
+type: evaluate
+input:
+  type: hardware
+  timeout: 10
+
+  start_addr: !expr symtab['do_test']
+  done_addr: !expr symtab['eval_done']
+  probes:
+    - 066CFF303430484257251617
+    - 0671FF485648756687013343
+  gem5: /opt/gem5
+  extra_options:
+    # Load the STM32F4 CMSIS pack
+    pack: /opt/perfgrade/stm32f4.pack
+
+  firmware: 'perfgrade.bin'
+
+  test_data:
+    addr: !expr symtab['loop_size']
+    data: !expr struct.pack("<I", 30)
+    when: !expr symtab[('main', 2)]
+```
+
+### Metric steps
 
 #### `load_traces`
 
+Streams trace data from a protobuf file in the format described in the "gem5
+evaluation" section (compatible with the `traces` output from an `evaluation`
+step).
+
+_Inputs:_
+
+- `file`: Path to trace file, required.
+- `gem5`: Path to gem5 source tree, required.
+
+_Output:_
+
+A `TraceStream`. This can be iterated over (streaming data in as needed). The
+header message can be accessed via the `header` property.
+
+_Example:_
+
+```yaml
+steps:
+  - id: traces
+    type: load_traces
+    input:
+      gem5: /opt/gem5
+      file: !expr eval.traces
+  - type: exec
+    input: |
+      print(traces.header)
+      for t in traces:
+          print(t)
+```
+
 #### `augment_traces`
+
+"Augments" an existing trace stream by adding a source file and line number to
+each trace item (where possible). This is done by using `pyelftools` to parse
+the DWARF debugging information embedded within a provided ELF binary.
+
+_Inputs:_
+
+- `traces`: A `TraceStream` (the output of a `traces` step), required.
+- `elf`: Path to an ELF binary to read DWARF information from, required.
+
+_Output:_
+
+An `AugmentedTraceStream`, which is like a `TraceStream` but with a `filename`
+and `line` number property in each element. The original trace message can be
+accessed via the `orig` property.
+
+_Example:_
+
+```yaml
+steps:
+  - id: traces
+    type: load_traces
+    input:
+      gem5: /opt/gem5
+      file: !expr eval.traces
+  - id: extra_traces
+    type: augment_traces
+    input:
+      traces: !expr traces
+      elf: perfgrade.elf
+  - type: exec
+    input: |
+      for t in extra_traces:
+          print(t)
+```
 
 #### `cycle_count`
 
+Counts total cycles in a trace, optionally only counting between a start and
+stop address.
+
+_Inputs:_
+
+- `traces`: `TraceStream` (from a `traces` step), required.
+- `first_pc`: Address at which to start counting cycles, optional.
+- `last_pc`: Address at which to stop counting cycles, optional.
+
+_Outputs:_
+
+- `ticks`: Simulator ticks elapsed in the trace
+- `cycles`: CPU cycles elapsed in the trace
+
+_Example:_
+
+```yaml
+steps:
+  - id: traces
+    type: load_traces
+    input:
+      gem5: /opt/gem5
+      file: !expr eval.traces
+  - id: cyc
+    type: cycle_count
+    input:
+      traces: !expr traces
+      first_pc: !expr symtab['Main']
+      last_pc: !expr symtab['test_end']
+  - type: exec
+    input: |
+      print(f'Cycles: {cyc.cycles}')
+```
+
+### Statistic steps
+
 #### `heatmap`
+
+Generates a heatmap similar to the one described in the "design" section from a
+trace.
+
+_Inputs:_
+
+- `source`: Path to source file to render a heatmap of, required.
+- `compilation_unit`: Name of the compilation unit in the DWARF debugging
+  information, required. This is usually the name of the source file relative to
+  the path of the working directory used when building the firmware. Should be
+  `src/uut.S` when using unified firmware and the `build` step.
+- `traces`: `AugmentedTraceStream` object (from an `augment_traces` step),
+  required.
+- `total_cycles`: Total cycle count, required.
+- `html_out`: Filename to write the rendered HTML to, optional.
+
+_Output:_
+
+A HTML string of the rendered heatmap.
+
+_Example:_
+
+```yaml
+steps:
+  - id: traces
+    type: load_traces
+    input:
+      gem5: /opt/gem5
+      file: !expr eval.traces
+  - id: cyc
+    type: cycle_count
+    input:
+      traces: !expr traces
+      first_pc: !expr symtab['Main']
+      last_pc: !expr symtab['test_end']
+  - id: extra_traces
+    type: augment_traces
+    input:
+      traces: !expr traces
+      elf: perfgrade.elf
+  - type: heatmap
+    input:
+      source: expressions.s
+      compilation_unit: src/uut.S
+
+      traces: !expr extra_traces
+      total_cycles: !expr cyc.cycles
+
+      html_out: heatmap.html
+```
 
 #### `curve_guess`
 
+Uses `scipy.optimize.curve_fit()` to guess the closest function that matches a
+set of input points [@scipy_curve_fit].
+
+_Inputs:_
+
+- `functions`: A dict of key-value pairs where each value is of the form
+  required by `scipy.optimize.curve_fit()`, required.
+- `data`: An object:
+  - `x`: Array of X-axis values, required.
+  - `y`: Array of Y-axis values, required.
+
+_Outputs:_
+
+- `function`: Key of closest matching function in the provided `functions`.
+- `error`: The magnitude of the estimate error.
+- `params`: Fitted function parameters.
+
+_Example:_
+
+```yaml
+type: curve_guess
+input:
+  functions:
+    linear: !expr 'lambda x, k, c: k * x + c'
+    squared: !expr 'lambda x, k, c: k * x ** 2 + c'
+    cubed: !expr 'lambda x, k, c: k * x ** 3 + c'
+  data:
+    x: [0, 1, 2, 3]
+    y: [3, 2, 1, 0]
+```
+
 #### `bucket_grade`
+
+Implements the bucket grading system described in the design section, including
+generation of the grade curve graph using `matplotlib`.
+
+_Inputs:_
+
+- `value`: The input value to grade (e.g. a log-log plot slope), required.
+- `buckets`: Array of grading buckets, in order of best to worst. The best input
+  value is 0 and the best grade is 1:
+  - `max`: Maximum input value to be considered part of this bucket, required. A
+    value greater than this will be placed in the next bucket (if there is one).
+  - `max_grade`: The maximum grade value that can be attained in this bucket,
+    required (unless this is the first bucket, in which case the value is always
+    1).
+  - `f`: Function to map the input value through to calculate the final grade,
+    optional. *Note both the input and output values for this function should be
+    within the range 0 to 1. The input will be mapped into this range based on
+    the input range of the bucket and the output will be mapped to a final grade
+    value using the `max_grade` value of the current and next bucket.
+- `title`: Title of the graph to generate, defaults to "Grade curve".
+- `xlabel`: Label to show on the X-axis, optional.
+- `graph_file`: Filename of graph to generate, optional.
+
+_Outputs:_
+
+A grade value.
+
+_Example:_
+
+```yaml
+type: bucket_grade
+input:
+  value: 0.7
+  xlabel: log-log slope (O(n^x))
+  graph_file: grade.png
+  buckets:
+    - max: 1.2
+    - max: 1.4
+      max_grade: 0.8
+    - max: 1.8
+      max_grade: 0.6
+    - max: 2.4
+      max_grade: 0.4
+```
 
 #### `diff`
 
+Generates a diff between two input arrays using the standard module `difflib`,
+specifically the function `difflib.unified_diff()`.
+
+_Inputs:_
+
+- `a`: List of expected values, required.
+- `b`: List of actual values, required.
+
+_Outputs:_
+
+- `diff_list`: An array of diff lines (with line terminators included).
+- `diff`: Diff output string.
+
+_Example:_
+
+```yaml
+steps:
+  - id: compare
+    type: diff
+    input:
+      a: [1, 2, 3]
+      b: [1, 2, 4]
+  - id: write_diff
+    description: Write diff to file
+    type: exec
+    input: |
+      with open('diff.txt', 'w') as f:
+          f.write(compare.diff)
+```
+
+### Meta-steps
+
 #### `pipeline`
+
+The implementation of an actual multi-step pipeline. Internally used to create
+and execute a pipeline from an input file. Useful for creating sub-pipelines
+that can be used with the `mapped` step.
+
+_Inputs:_
+
+See the "pipeline configuration format" section.
+
+_Outputs:_
+
+A dict with all of the pipeline steps' outputs (keys are step ID's).
 
 #### `mapped`
 
+Map a step over a list and collect the outputs. Can be used to iterate over a
+list of with a step (or multiple steps if a `pipeline` is used as the base
+step).
+
+_Inputs:_
+
+- `parallel`: Number of steps to run in parallel (in separate threads), defaults
+  to 1 (i.e. no parallelism).
+- `items`: The object to map the `step` over (e.g. a list), required.
+- `step`: A step definition to map the `items` over, required. For the step, `i`
+  will be the index of the item and `item` will be the item itself. Note that
+  evaluation of any `!expr` values will be deferred until each execution of the
+  step.
+
+_Output:_
+
+A list of outputs, one for each of the input `items`.
+
+_Example:_
+
+```yaml
+steps:
+  - id: multi
+    type: mapped
+    input:
+      parallel: 2
+      items: [5, 6]
+      step:
+        type: pipeline
+        input:
+          steps:
+            - id: square
+              type: passthrough
+              input: !expr item**2
+            - id: cube
+              type: passthrough
+              input: !expr item**3
+  - type: exec
+    input: |
+      for result in multi:
+          print(f'i^2: {result.square}, i^3: {result.cube}')
+```
+
 #### `include`
+
+Include a step definition from an external YAML file. Useful for sharing common
+functionality. Note: The included step's ID will be replaced with the ID of
+the `include` step.
+
+_Input:_
+
+Path to a YAML file containing a full step definition (**not** just the input
+values for a `pipeline` step).
+
+_Output:_
+
+Whatever the output of the included step is.
 
 ### Setup
 
@@ -2152,7 +2631,38 @@ requires some additional work to use evaluation features (both `gem5` and
 `hardware`). A Docker image is also provided (with these additional dependencies
 pre-installed).
 
-...
+#### Docker image usage
+
+To use Perfgrade via the Docker image, simply run
+`./perfgrade.sh /path/to/pipeline.yaml` from the `app/` directory (assuming Docker
+is installed and working). The sections below describing the installation process
+are unnecessary if Docker is used to run Perfgrade.
+
+#### Installation
+
+To install Perfgrade itself, Python 3.6+ is required. Once ready, run
+`pip3 install .` from the `app/` directory. This will fetch and install all of
+the Python library dependencies.
+
+#### gem5 setup
+
+In order to set up gem5, clone and build the fork of gem5 created for this
+project. The build can be performed as normal according to the official gem5
+documentation. Be sure to use the appropriate path for all steps that require
+a valid `gem5` tree.
+
+#### Hardware setup
+
+Once the main installation is done, an extra ARM CMSIS pack for pyOCD is needed
+to get hardware evaluation working for the STM32F4 Discovery board. This can be
+installed for your current user by running `pyocd pack -i stm32f4`.
+Alternatively, the pack can be downloaded from ARM and passed as an
+`extra_options` value in the `evalution` step (`pack: /path/to/stm32f4.pack`).
+
+#### Running Perfgrade
+
+With all dependencies installed, `perfgrade /path/to/pipeline.yaml` should work.
+For detailed example pipelines, see `app/examples/`.
 
 \newpage
 
