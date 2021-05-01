@@ -2,6 +2,7 @@
 template: eisvogel.tex
 numbersections: true
 papersize: a4
+colorlinks: true
 
 title: Beyond functional autograding of ARM assembly language programs
 subtitle: |
@@ -66,6 +67,8 @@ an automated system can perform its grading in a matter of minutes or seconds,
 learning is made more efficient. It has been shown that students can even
 be more willing to put more time and consideration into their work before final
 submission with the aid of immediate feedback [@instant_feedback].
+
+\newpage
 
 ## Context
 
@@ -132,6 +135,8 @@ with the actual execution of submissions, collecting metrics along the way. It's
 not immediately obvious which of a number of potential methods will prove to be
 the best for the project. A combination or ability to choose between a number of
 different options might be the ultimate answer.
+
+\newpage
 
 # Background
 
@@ -292,6 +297,8 @@ Using the same target as already employed by Introduction to Computing has
 the added benefit of an existing "user base", allowing for easier testing with
 existing code.
 
+\newpage
+
 ## Emulators and simulators
 
 Emulators and simulators are useful tools that can be used, in whole or part, to
@@ -340,6 +347,8 @@ provide any features over upstream QEMU, such as instrumentation or improved
 accuracy. xPack's QEMU is currently used in Introduction to Computing, particularly
 for its GUI mode, allowing for GPIO demonstrations without needing real
 hardware.
+
+\newpage
 
 ### Unicorn
 
@@ -435,6 +444,8 @@ Both xPack QEMU and Unicorn have
 reasonable performance, although not approaching real ARM hardware.
 gem5 is slower since it tries to accurately model complex architectures, (at
 least when configured to do so.
+
+\newpage
 
 #### Compatibility
 
@@ -702,6 +713,8 @@ a fully featured graphical interface, especially since the user of the
 assignment configuration system will be an instructor for a computer science
 course.
 
+\newpage
+
 DevOps is a popular set of software development practices that can be summarised
 as the combination of software DEVelopment and OPerations [@devops]. Although flexible
 and sometimes loosely defined, there are usually Continuous Integration and
@@ -747,6 +760,8 @@ jobs:
           branch: gh-pages
           folder: presentation/_site
 ```
+
+\newpage
 
 Listing \ref{lst:github-actions} is an example of a CI/CD pipeline, written
 for GitHub Actions. The purpose of this pipeline (or "workflow" as it is
@@ -794,6 +809,8 @@ execution time of a student's program. More specifically, "execution time" refer
 the number of CPU cycles taken to complete the program, as previously discussed.
 In order to generate the most accurate (or "fairest") grade, an iterative
 approach was taken to refine grade value calculation.
+
+\newpage
 
 ```{.nasm label="lst:asm-loops" caption="ARM assembly grade testing program"}
 .syntax unified
@@ -924,6 +941,8 @@ size of the input.
 
 !["Heatmap" sketch\label{fig:heatmap_sketch}](img/heatmap_sketch.png)
 
+\newpage
+
 A heatmap typically refers to the representation of a data matrix on a grid with
 colour shading used to represent the value of each cell [@heatmap]. Figure
 \ref{fig:heatmap_sketch} shows a sort of "1D" variant of this applied to the CPU
@@ -981,6 +1000,8 @@ remaining arguments are passed to the configuration script, which can be
 accessed via Python's `sys.argv` as normal. Note that the configuration script _must_ be
 provided; without it no components in the simulator can be instantiated or used.
 
+\newpage
+
 ### CPU accuracy
 
 As previously discussed, gem5 implements a number of different CPU models. In
@@ -1023,6 +1044,8 @@ simulations for platforms with Cortex-A cores. As a result, a custom script was
 written for this project. Only snippets of the script will be included here, the
 complete file is available at `app/perfgrade/gem5_config/stm32f4.py`.
 
+\newpage
+
 #### Options
 
 \hfill
@@ -1063,6 +1086,8 @@ ranges of memory to dump to disk on simulator exit. Each pair will result in a
 file `mem<i>.bin` being written to the globally-defined gem5 output directory
 (settable via the gem5 global option `--outdir`). `<i>` is the zero-indexed
 offset into the supplied list of `address:size` pairs.
+
+\newpage
 
 #### CPU and memories
 
@@ -1212,6 +1237,8 @@ In `initState()`:
 5. Necessary flags are set to ensure the CPU is in Thumb mode, since ARMv7-M
    can only execute Thumb instructions [@armv7m].
 
+\newpage
+
 ### Generating machine-readable traces
 
 `PerfgradeTracer`, as described, replaces the default tracer implementation in
@@ -1307,6 +1334,8 @@ certain value. `LoadEvent` extends this class with a `process()` method
 that simply performs the same operation as `load()`. `loadWhen()` queues an
 appropriate `LoadEvent` when called.
 
+\newpage
+
 ### Stopping the simulation
 
 While a user-mode program typically exits using an `exit()` syscall (or other
@@ -1348,6 +1377,8 @@ hardware registers are defined and a `make`-based build template is available
 toolchain. The source tree for the unified firmware is located at
 `app/perfgrade/build/`. Each of the main components will be described in
 their own section.
+
+\newpage
 
 ### `rules.mk` and `Makefile`
 
@@ -1427,6 +1458,8 @@ This file contains the actual `main()` function, which is called by
 calling `main()`, loading data into memory from the `.data` section, zeroing
 data in the `.bss` section and executing constructors.
 
+\newpage
+
 ``` {.c label="lst:fw-main" caption="Unified firmware main function"}
 static inline bool is_sim(void) {
     return SCB_CPUID == 0xcafebabe;
@@ -1473,6 +1506,8 @@ code which are simulator or hardware specific. It's possible to determine if the
 firmware is running in gem5 by reading the `SCB_CPUID` register, since it has a
 magic value written to it in the simulator case (as previously discussed).
 
+\newpage
+
 If not running in gem5, (i.e. `!is_sim()`), the `libopencm3` function
 `rcc_clock_setup_pll()` is used to set the core clock for the STM32F407. By
 default, the 16MHz internal oscillator is used to drive all clocks on the chip,
@@ -1516,6 +1551,8 @@ complete configuration can be found in the non-abridged `src/main.c`.
 If the firmware is running in gem5, the `m5op` `exit` stops the simulation at
 this point. `eval_done` is exported for programmatic determination of the end
 of `main()` in real hardware.
+
+\newpage
 
 ## Hardware evaluation
 
@@ -1777,6 +1814,8 @@ will not be described, but essentially:
 4. The comparator is set to generate a `CMPMATCH` event, which is fed into the
    ETM
 
+\newpage
+
 ``` {.c label="lst:trace-etm-config" caption="Setting up the ETM"}
 // Unlock ETM registers
 ETMLAR = CORESIGHT_LAR_KEY;
@@ -1811,6 +1850,8 @@ At this point, only the ETM itself is left to configure. Listing
    ETM data in the TPIU (since multiple components are multiplexed into the TPIU).
 5. The `TCENABLED` bit is set in the TraceEnable Control 1 register (`ETMTECR1`)
    in order to enable of control trace generation with the start/stop block.
+
+\newpage
 
 ``` {.c label="lst:trace-etm-trigger" caption="Defining ETM start/stop conditions"}
 // Generate trigger on CMPMATCH[0]
@@ -1963,6 +2004,8 @@ property should be set by the end of `run()` to provide outputs for other steps
 to use. Instance property `input` can be accessed by `run()` to read the
 processed input tree (with `!expr` values evaluated).
 
+\newpage
+
 ``` {.python label="lst:perfgrade-copy" caption="Perfgrade `Copy` step definition"}
 class Copy(Step):
     description = 'Copy files'
@@ -2008,6 +2051,8 @@ All expressions have access to the following standard modules: `struct`,
 external libraries are included by default: `box.Box` (as `Box`), `numpy`
 (as `np`) and `matplotlib.pyplot` (as `plt`).
 
+\newpage
+
 ### Basic steps
 
 #### `exec`
@@ -2043,6 +2088,8 @@ input: |
           for line in myfile:
               self.output.append(line)
 ```
+
+\newpage
 
 #### `passthrough`
 
@@ -2094,6 +2141,8 @@ input:
     dst: /tmp/man
 ```
 
+\newpage
+
 ### Evaluation steps
 
 #### `build`
@@ -2136,6 +2185,8 @@ input:
   defines:
     ARR_SPACE: !expr 1024 * 4
 ```
+
+\newpage
 
 #### `symtab`
 
@@ -2185,6 +2236,8 @@ In `hardware` mode, pyOCD is used to manage real boards as described in the
 is quite expensive with pyOCD, connections are pooled globally. Connections are
 only closed either when they have been unused for more than 20 seconds or
 Perfgrade is shutting down.
+
+\newpage
 
 _Inputs:_
 
@@ -2335,6 +2388,8 @@ accessed via the `orig` property.
 
 _Example:_
 
+\newpage
+
 ```yaml
 steps:
   - id: traces
@@ -2476,6 +2531,8 @@ input:
     y: [3, 2, 1, 0]
 ```
 
+\newpage
+
 #### `bucket_grade`
 
 Implements the bucket grading system described in the design section, including
@@ -2521,6 +2578,8 @@ input:
     - max: 2.4
       max_grade: 0.4
 ```
+
+\newpage
 
 #### `diff`
 
@@ -2569,6 +2628,8 @@ See the "pipeline configuration format" section.
 _Outputs:_
 
 A `dict` with all of the pipeline steps' outputs (keys are step IDs).
+
+\newpage
 
 #### `mapped`
 
@@ -2711,6 +2772,8 @@ pipelines written for
 for each of the other assignments. All of the pipelines are available under
 `app/examples/` (each in their own subdirectories).
 
+\newpage
+
 ### Common
 
 Contains a number of utilities which are used across all three pipelines.
@@ -2753,6 +2816,8 @@ module simplifies the process. The arguments to the function are:
 - `ss`: The value of `SQUARE_SPACE` (for appropriate padding)
 - `sss`: The value of `SUB_SPACE` (for appropriate padding)
 
+\newpage
+
 ### Build
 
 ```yaml
@@ -2786,6 +2851,8 @@ common definitions `include`d before using the `build` step to perform the
 actual build. Finally, the raw firmware and ELF binary are copied out of their
 temporary storage so they can be used by both the Correctness and Performance
 pipelines.
+
+\newpage
 
 ```nasm
 .syntax unified
@@ -2878,6 +2945,8 @@ input:
 Sets up a list of test cases to run the student's program over, in this example
 there is only the original sample case.
 
+\newpage
+
 #### `eval_cases`
 
 This is a `mapped` step (over the test case array defined in the previous step)
@@ -2929,6 +2998,8 @@ After evaluation, the `a` and `b` lists are updated with strings which should be
 equal based on the expected and real booleans. These will be fed into a `diff`
 step later. The total number of correct test cases is also counted.
 
+\newpage
+
 #### `compare` / `write_diff`
 
 Uses `diff` and `exec` steps to compare `cases.a` to `cases.b`. This diff be
@@ -2979,6 +3050,8 @@ count the number of CPU cycles spent executing the student's submission. Note
 the use of `Main` and `test_end` to restrict cycle counting to student code
 only.
 
+\newpage
+
 #### `heatmap` / `heatmap_pdf`
 
 \hfill
@@ -3021,6 +3094,8 @@ snippet above shows the different parameters provided to the `evaluate` step
 so that the execution takes places correctly in hardware. The cycle count is
 then calculated from the fake trace data as a comparison point to the simulated
 value.
+
+\newpage
 
 #### `perf_cases`
 
@@ -3072,6 +3147,8 @@ section). The `cycles` step is needed to translate the list of objects produced
 by the `mapped` step into a single list of cycle counts. numpy's `polyfit`
 function is then used to calculate the slope of a log-log plot of input sizes
 against cycle counts.
+
+\newpage
 
 #### `grade`
 
@@ -3193,7 +3270,9 @@ hardware evaluation. Note that the server is mainly for personal use and is
 running a significant number of existing services, which influenced the
 deployment methodology.
 
-As state previously, the installation of Submitty demands quite a
+\newpage
+
+As stated previously, the installation of Submitty demands quite a
 specific environment: a Ubuntu 18.04 Server VM [@submitty_installation]. Due to
 limited hypervisor capacity on the server, an LXD-based container was used
 instead (an existing VM had resources available to allocate to a number of LXD
@@ -3233,6 +3312,8 @@ LXD host, it was possible to "pass through" both boards by their common
 `vendor_id:product_id` pair. It was also necessary to set the permissions on the
 `/dev/bus/usb` nodes to world-writable so that unprivileged grading processes
 could access them.
+
+\newpage
 
 ### Configuring the assignments
 
@@ -3276,6 +3357,8 @@ executes the `perfgrade` command with the provided arguments. `venv-run` is
 used because Perfgrade was installed in a Python virtual environment (so
 `perfgrade` would not be on the default `$PATH`).
 
+\newpage
+
 #### `testcase`: "Assemble and link ARM program"
 
 \hfill
@@ -3313,6 +3396,8 @@ Corresponds to the "Build" pipeline:
   - Setting `show_actual` to `always` means that Submitty will always render
     these files in the web UI, whether or not the `command` succeeded.
   - `deduction` is 0 since the points will be deducted if the `command` fails anyway.
+
+\newpage
 
 #### `testcase`: "Correctness"
 
@@ -3354,6 +3439,8 @@ Executes the Correctness pipeline:
 - Not shown here are the same `stderr` and `stdout` "validators" used to show
   the logs from Perfgrade in the web UI.
 
+\newpage
+
 #### `testcase`: Performance
 
 \hfill
@@ -3388,6 +3475,8 @@ show the statistics, heatmap, grade curve and performance curve in the web UI.
 Note that all of the visualisations are in PDF format, as most other filetypes
 will be printed in text form (a hardcoded exception exists within Submitty for
 PDF files, which are embedded as `<iframe>`s).
+
+\newpage
 
 #### File management
 
@@ -3477,6 +3566,8 @@ system. Note that the nginx server being configured here is used for a number of
 unrelated services and is therefore already set up to be accessed over TLS with
 appropriate certificates and DNS records. The hostnames for the backends come
 from an internal DNS server.
+
+\newpage
 
 ``` {label="lst:submitty-anon" caption="Submitty anonymous signup SQL"}
 if _, err := tx.ExecContext(
@@ -3614,6 +3705,8 @@ any grades less than full marks. Some of the values for this assignment
 also came from submissions whose performance was made considerably worse for
 testing purposes (by adding artifical loops).
 
+\newpage
+
 ### Survey
 
 There was a strong positive response to the effectiveness of the system for
@@ -3661,6 +3754,8 @@ interface to inspect registers or memory, a method employed by current
 autograding configurations. Producing a detailed, machine-readable trace of
 execution in gem5 was very helpful for more advanced performance measurement
 later on.
+
+\newpage
 
 Near-parity with the simulator was achieved in the ability to evaluate programs
 with real hardware, including automation of all tasks required. The creation of
