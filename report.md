@@ -8,7 +8,7 @@ subtitle: |
   Final Year Project (CSU44099)
 author:
   - |
-    [Jack O'Sullivan (osullj19@tcd.ie)](osullj19@tcd.ie)
+    [Jack O'Sullivan (osullj19@tcd.ie)](mailto:osullj19@tcd.ie)
 title-extra: |
   ```{=latex}
   \textsf{Supervisor: Dr. Jonathan Dukes}
@@ -63,15 +63,15 @@ In addition to the benefits for instructors, students can also take advantage of
 an automated grading system. With manual grading, there is a significant delay
 between submission and receiving feedback for an assignment. Since
 an automated system can perform its grading in a matter of minutes or seconds,
-learning is more efficient. It has been shown that students can even
+learning is made more efficient. It has been shown that students can even
 be more willing to put more time and consideration into their work before final
 submission with the aid of immediate feedback [@instant_feedback].
 
 ## Context
 
 Introduction to Computing (parts I and II) is taught to first year computer
-science students in order to introduce them to fundamental concepts in
-computers. Topics include the manner in which CPU executes programs,
+science students in order to introduce them to fundamental computer concepts.
+Topics include the manner in which CPU executes programs,
 representing information in binary form and showing the relationship between
 high-level programming concepts and machine instructions [@intro_computing].
 
@@ -79,7 +79,7 @@ This project will explore automated grading within the specific context of these
 modules. The advantage of this approach is the availability of a large set of
 sample programs to test, along with a class of students that could potentially
 evaluate an improved automated grading system. Both modules already make use of
-functional automated grading, making use of Submitty, a free and open-source
+functional automated grading based upon Submitty, a free and open-source
 automated grading platform.
 
 Since ARM assembly programming is the primary driver of learning in Introduction
@@ -90,7 +90,7 @@ project.
 
 The goal of this project is to develop an automated grading system which focuses
 specifically on measuring performance (at runtime) of programs. As
-previously mentioned, there are a number of potential aspects for
+previously mentioned, there are a number of potential avenues for
 improving automation around programming assignment grading. By choosing a
 specific type of assignment and domain for improvement, a more in-depth system
 can be realised.
@@ -100,22 +100,21 @@ hand-written ARM assembly language programs, it makes sense to look at
 performance. This is primarily due to the fact that assembly language programs
 are usually written with high-performance in mind. Additionally, other aspects
 of a program's
-grading (aside from correctness) such as maintainability are somewhat more
+grading (aside from correctness) such as maintainability, are somewhat more
 difficult to anaylse, given that assembly programs have very little structure.
 Dynamic or runtime performance analysis is also used over static analysis for
 the same reason.
 
-Performance is also not trivial to analyse, as the performance of a program is
+Performance is also not trivial to analyse, since measurement is
 not as simple as running a stopwatch until a program finishes. Factors such as
 the platform used and interference from other programs can have an impact on
-such a measurement, for a start. It can also be difficult to compare two
+such a metric, for a start. It can also be difficult to compare two
 programs solely based on their run time, even if perfectly accurate. A program
 that runs twice as slowly as another might not be twice as poorly written.
 
 The final product should be able to facilitate grading assignments in
 Introduction to Computing. This will include testing against specific
-assignments given in the modules. In order to work in the real world, the system
-will also need to integrate with Submitty. It's worth
+assignments given in the modules. It's worth
 noting that the Introduction to Computing modules focus on writing programs to
 run on a microcontroller. At time of writing, this is specifically an
 STMicroelectronics STM32F4xx-based board (featuring an ARM Cortex-M4 core).
@@ -156,7 +155,7 @@ pre-determined execution time or memory limit.
 Despite the limited scope, The Online Judge was said to be "invaluable in the
 conducting of the CS3233 course", a module preparing students for a programming
 competition. The Online Judge was later modified for use in a first year
-data structures and algorithms module. The use of even the most rudimentary
+data structures and algorithms module. The use of even fairly rudimentary
 systems is clearly a significant aid to grading.
 
 ### Comparison of automated grading strategies
@@ -172,7 +171,7 @@ for elements such as comments [@testing_strategies].
 ### EmbedInsight
 
 EmbedInsight was created to automate embedded systems courses, including
-Massively Open Online Courses (MOOCs). The key goal of this system is to
+Massively Open Online Courses (MOOCs). The main goal of this system is to
 test complex assignments that make use of real-world hardware while aiming
 to scale out to courses with potentially thousands of participants
 [@embedinsight]. There is little exploration of advanced submission analysis.
@@ -195,11 +194,11 @@ the hardware engine.
 Submitty presents a more modern automated grading platform [@submitty].
 Initially released in 2014 [@submitty_initial_release], Submitty
 provides an open-source, self-hostable platform for students to submit code
-(in a variety of formats) and an automated grading system with support for many
-programming languages (e.g. Python, C/C++, Java, etc.), along with many other
-supplementary features [@submitty_features].
+(in a variety of formats). As part of this, an automated grading system with
+support for many programming languages (e.g. Python, C/C++, Java, etc.) is
+presented, along with many other supplementary features [@submitty_features].
 
-Submitty, while making use of a user interface much more in line with those
+While Submitty makes use of a user interface that is much more in line with those
 expected of a 2010's software product, is still mostly designed for use with
 functional autograding. However, the platform is open and extensible, featuring
 its own assignment configuration syntax.
@@ -208,11 +207,11 @@ techniques, such as the use of static analysis, memory debugging and code
 coverage tools [@submitty].
 
 While being relatively modern, Submitty has a number of technical design and
-structure problems. Originally it was designed specifically to grade assignments
+structure problems. Originally, it was designed specifically to grade assignments
 in specific classes at the Rensselaer Polytechnic Institute (RPI) as the
-"RPI Homework Submission Server" [@submitty_poster]. As a result, Submitty
-carries a degree of "technical debt" (a result of choosing a solution which
-solves an immediate problem more easily but raises issues later) [@tech_debt].
+"RPI Homework Submission Server" [@submitty_poster]. As a result, the platform
+carries a degree of "technical debt", which is a result of choosing a solution that
+solves an immediate problem more easily but raises issues later [@tech_debt].
 Examples of this include:
 
 - A somewhat convoluted installation process that requires a very specific
@@ -221,16 +220,16 @@ Examples of this include:
   involving (as a recommendation!) direct modification of internal database
   structures
 - An overly complex grading process involving three or four components written
-  in different programming languages (PHP frontend talking to a Python daemon
-  which calls a C++ evaluator that makes use of shell scripts in order to
-  perform testing)
+  in different programming languages, sucg as a PHP frontend talking to a Python
+  daemon which calls a C++ evaluator that makes use of shell scripts in order to
+  perform testing
 
 ### Summary
 
 Overall, the state of the art in autograding generally only involves the
 previously mentioned functional or black box methods. Comparing work on The
-Online Judge to EmbedInsight, a much more recent publications,
-relatively little has changed in the actual grading methodology. Some sort of
+Online Judge to EmbedInsight, a much more recent publication,
+relatively little has changed in actual grading methodology. Some sort of
 basic "output comparison" is used to check a submission against the correct
 results, with relatively little regard for other aspects, such as performance.
 
@@ -242,24 +241,26 @@ performance is achieved.
 
 Assembly programming is a useful way to teach the core concepts of
 microprocessor systems. Using high-level programming languages (including C in
-this context!) is useful only to a point, since the purpose of these languages
+this context!) for this purpose is useful only to a point, since the goal of
+these languages
 is to provide abstractions over machine instructions. Learning to write assembly
 programs also leads naturally to understanding concepts such as binary encoding,
-registers and memory in a way that using high-level languages often does not.
+registers and memory in a way that writing high-level code often does not.
 
 In order to most effectively teach assembly programming, a target platform needs
 to be carefully chosen. While using x86_64-based processors might seem like the
 most obvious choice, since they are used in almost all desktops or laptops,
-they present a number of issues. Being based on CISC design from the late
-1970's, x86_64 processors expose a huge number of complex instructions, which
-would likely confuse a beginner.
+the architecture presents a number of issues. Being based on a CISC design from
+the late 1970's [@x86], x86_64 processors expose a huge number of complex
+instructions, which would likely confuse a beginner.
 
 ARM processors are pervasive in mobile devices and increasingly so in
-microcontrollers, displacing 8-bit products. Newer designs in the Cortex-M
-series feature increasingly complex cores with more features than the older ARM7
+microcontrollers, gradually displacing 8-bit products [@mcu_market]. Newer designs
+in the Cortex-M series feature increasingly complex cores with more features
+than the older ARM7
 and ARM9. While some of these older designs (such as the ARM7TDMI) remain
-popular, newer cores are being rapidly adopted and support more modern features
-while remaining relatively easy to understand.
+popular, newer cores are being quickly adopted and remain relatively easy to
+understand.
 
 STMicroelectronics produce a series of microcontrollers (and accompanying
 low-cost development boards) making use of Cortex-M cores called "STM32". The
@@ -272,22 +273,22 @@ instruction sets, and not the older ARM set used my processors like the ARM7
 
 ![STM32F4 Discovery board used in this project\label{fig:stm32f4_discovery}](img/stm32f4_discovery.jpg)
 
-The STM32F4 Discovery board is the target board for Introduction to Computing
+The STM32F4 Discovery board is the target platform for Introduction to Computing
 (and is therefore also the target for this project). Figure
 \ref{fig:stm32f4_discovery} shows the board featuring an STM32F407VG
 microcontroller and an integrated ST-LINK/V2 debugger [@stm32f4_discovery]. The
-ST-LINK is a standard debugging component provided by ST that implements ARM's
+ST-LINK is a standard debugging component from ST that implements ARM's
 Serial Wire Debug (SWD) protocol. This requires only 2 pins - SWDIO and SWCLK,
 providing bidirectional communication and a clock signal respetively [@arm_swd].
 
-The STM32F407VG provides a wide range of peripherals - the reference manual
+The STM32F407VG contains a wide range of peripherals - the reference manual
 describing them is over 1700 pages long [@stm32f407]. Use of peripherals is
 relatively limited in Introduction to Computing, with only the standard ARM
-SysTick timer and GPIO's (General Purpose I/O) being used.
+SysTick timer and GPIO (General Purpose I/O) being used.
 The SysTick timer is a counter that decrements at a configurable real-time
 interval and can generate interrupts [@armv7m].
 
-Using the same target as is already employed by Introduction to Computing has
+Using the same target as already employed by Introduction to Computing has
 the added benefit of an existing "user base", allowing for easier testing with
 existing code.
 
@@ -298,7 +299,7 @@ replace a piece of real hardware.
 In general, an *emulator*
 attempts to achieve full functionality of a real system, usually maximising
 performance by designing the system with the host in mind. A *simulator* aims
-to accurately model the internals of a system and is generally less of a
+to accurately model the internals of a platform and is generally less of a
 replacement for real hardware. Some tools combine both, using accurate
 simulation only for the most critical sections of evaluation [@marss].
 
@@ -310,18 +311,17 @@ drawbacks.
 ### xPack QEMU
 
 QEMU (the Quick EMUlator) describes itself as "a generic and open source
-machine emulator and virtualizer" [@qemu]. It's purpose is generally to emulate
+machine emulator and virtualizer" [@qemu]. Its purpose is generally to emulate
 full systems, including peripherals such as hard drives and network interfaces.
 Typically, hardware accelerated virtualisation technology is used to achieve
 near-native performance (e.g. KVM on Linux). QEMU also offers the ability to
-emulate software compiled for other CPU's with user-mode syscall translation.
-It's very flexible, but is mostly focused on achieving maximum
-performance, with the website's tagline as
-"QEMU: the FAST! processor emulator" [@qemu].
+emulate software compiled for other CPUs with user-mode syscall translation.
+It is very flexible, but is mostly focused on achieving maximum performance,
+with the website's tagline of "QEMU: the FAST! processor emulator" [@qemu].
 
 The xPack project provides "tools to manage, configure and build complex,
 package based, multi-target projects" [@xpack]. xPack's primary goal is to
-provide a dependency management tool for embedded projects (primarily
+create a dependency management tool for embedded projects (primarily for
 toolchains, with a particular focus on ARM).
 
 ![xPack QEMU STM32F4 Discovery board emulation\label{fig:xpack_qemu_gui}](img/xpack_qemu_gui.jpg)
@@ -329,18 +329,17 @@ toolchains, with a particular focus on ARM).
 A subproject of xPack is their
 fork of QEMU, referred to as "The xPack QEMU Arm". This fork of QEMU seeks to
 address the lack of support for microcontroller cores in QEMU (which generally
-emulates high-performance application cores only). Specifically, the fork aims
+emulates high-performance application cores only). Specifically, xPack QEMU aims
 to support Cortex-M3 and M4 boards (including peripherals). The STM32F4 Discovery
-development board (featuring an STM32F407 chip), used in Introduction to
-Computing, is one of the supported boards. Emulation is quite
-detailed, and a graphical representation of the board with LED's that react
-to changing GPIO state is provided (see Figure \ref{fig:xpack_qemu_gui}).
+development board is one of the
+supported targets. Emulation includes a graphical representation of the board
+with LEDs that react to changing GPIO state (see Figure \ref{fig:xpack_qemu_gui}).
 
 Aside from better Cortex-M peripheral support, xPack QEMU doesn't really
-provide any features over upstream QEMU (instrumentation, improved accuracy
-etc). xPack's QEMU is currently used in Introduction to Computing (particularly
+provide any features over upstream QEMU, such as instrumentation or improved
+accuracy. xPack's QEMU is currently used in Introduction to Computing, particularly
 for its GUI mode, allowing for GPIO demonstrations without needing real
-hardware).
+hardware.
 
 ### Unicorn
 
@@ -351,18 +350,17 @@ code across many architectures. A key difference between Unicorn and xPack QEMU
 all. Unicorn only emulates raw machine code.
 
 Being developed with security research in mind (and initially presented at Black
-Hat!), Unicorn exposes an easy to use API allowing for powerful instrumentation.
+Hat), Unicorn exposes an easy to use API allowing for powerful instrumentation.
 This is a notable extension over QEMU, which provides no such access. The
-emulated CPU can be programmatically hooked (with bindings in a multitude of
+emulated CPU can be programmatically hooked (with bindings in a number of
 popular programming languages) to control execution and inspect
 registers and memory on a per-instruction basis [@unicorn]. It's not possible
 to record accurate timing information or break down execution to a level beyond
 a single instruction however (an inherent limitation when using QEMU as a base).
 
 Since Unicorn has seen a lot of use in information security research, it is
-relatively well documented and easy to use
-(although there is little to no official documentation beyond examples given
-in the original Black Hat talk).
+relatively well documented, although there is little to no official
+documentation beyond examples given in the original Black Hat talk.
 
 ### gem5
 
@@ -370,35 +368,36 @@ gem5 is vastly different to both xPack QEMU and Unicorn. With its primary goal
 of "\[being\] a community tool focused on architectural modeling" [@gem5],
 gem5's design and features are unrelated to those of QEMU and the forks
 described previously. gem5's headline feature is really its flexibility and
-modularity (it's the first goal listed in the project's original paper), which
-originally comes from M5 (a previous simulator folded into gem5).
+modularity (this is the first goal listed in the project's original paper), which
+originally comes from M5, a previous simulator folded into gem5.
 
 ![Visualisation of a sample gem5 config (for an ARM Versatile Express platform)\label{fig:gem5_config_complex}](img/gem5_config_complex.jpg)
 
 The simulator's flexibility primarily stems from its tight, object-oriented
-integration with Python. All components in gem5 are `SimObject`s. These contain
+integration with Python. All components in gem5 are `SimObject`s. These are
+comprised of
 two pieces: a C++ implementation and a Python binding. While the C++
 part implements the behaviour of the component (e.g. a memory controller) for
-high performance, the Python part defines the parameters for the component
-[@gem5]. An overall Python-based configuration script instantiates all of the
+high performance, the Python part defines the parameters of the component
+[@gem5]. An overall Python-based configuration script instantiates the
 `SimObject`s and wires them up. "Ports" are generally used to connect
 communication between components such as memories. A visualisation of such a
 configuration script (generated by gem5 itself) can be seen in figure
 \ref{fig:gem5_config_complex}.
 
-Using this modular design, it's possible to create a nearly endlessly
+Using this modular design, it is possible to create a near endlessly
 customisable system layout based on the requirements of a particular
-application. gem5 can simulate a number of different CPU ISA's and memory
-systems with various models. For CPU's, it's possible to simulate certain
-segments of code in a simple "atomic" mode (for performance) and critical
+application. gem5 can simulate a number of different CPU ISAs and memory
+systems with various models. For CPUs, it is possible to simulate certain
+segments of code in a simple "atomic" mode for performance, and critical
 segments using a complex pipelined and out-of-order execution model named "O3"
-(for detailed analysis). Memory can also be modelled as simple SRAM-style
+for detailed analysis. Memory can also be modelled as simple SRAM-style
 hardware with a fixed latency, or complex DRAM.
 
 gem5 also supports two primary execution modes, similar to QEMU. In full system
 mode ("FS"), gem5 emulates a full bare-metal system, with interrupts and
-peripheral support (sophisticated enough to boot a full Linux kernel). Syscall
-emulation mode ("SE") emulates syscalls for executing user-mode programs.
+peripheral support, which is sophisticated enough to boot a full Linux kernel.
+Syscall emulation mode ("SE") emulates syscalls for executing user-mode programs.
 
 Adding and making use of new features (as `SimObject`s) is easy with gem5's
 SCons-based build system and Python-based configuration scripts.
@@ -427,22 +426,22 @@ designed for high performance. In fact, QEMU uses dynamic instruction
 translation to maximise speed, which makes the emulation nothing like the real
 processor being emulated [@qemu_tcg]. gem5 is much more accurate out of the box,
 since it is designed to model complex ARM application cores (Cortex-A series).
-It is given a more ambiguous rating since there aren't any configurations for
-Cortex-M cores provided, but this should be possible to improve with some work.
+It is given a more ambiguous rating since there are no sample configurations for
+Cortex-M cores, but this should be possible to improve with some work.
 
 #### Performance
 
-Both xPack QEMU and Unicorn therefore have
-reasonable performance, although not approaching real ARM hardware of course.
-gem5 is a slower since it tries to accurately model complex architectures (when
-configured to do so at least).
+Both xPack QEMU and Unicorn have
+reasonable performance, although not approaching real ARM hardware.
+gem5 is slower since it tries to accurately model complex architectures, (at
+least when configured to do so.
 
 #### Compatibility
 
 Unicorn has very poor compatibility with firmware built to run on an STM32F407,
-given that it is designed to only execute pure instructions. xPack QEMU
+given that it is designed to only execute pure machine code. xPack QEMU
 is better in this regard, since it aims to emulate real microcontrollers and
-boards. gem5's compatbility out of the box is also relatively poor, again due to
+boards. gem5's compatibility out of the box is also relatively poor, again due to
 the lack of pre-made configurations for Cortex-M platforms (along with a lack of
 associated peripheral implementations). With further work, compatibility could
 be greatly improved.
@@ -451,20 +450,20 @@ be greatly improved.
 
 QEMU provides no support for instrumentation at all, and this extends to xPack's
 fork. Unicorn provides a simple to use API, but it doesn't allow for analysis
-beyond granularity of a single instruction. gem5 is set up to collect a lot of
-statistics throughout execution (since that's effectively what it was designed
-for). It also has the ability to generate very detailed trace data and can be
-easily extended to add further instrumentation. ARM defines a number of
+beyond the granularity of a single instruction. gem5 is set up to collect a lot of
+statistics throughout execution, since that is effectively what it was designed
+for. It also has the ability to generate very detailed trace data and can be
+easily extended to add further instrumentation. For hardware, ARM defines a number of
 standardised debugging tools, which can (in theory) provide a lot of
 opportunities for analysis. Their use depends on the implementation being present on
 a specific microcontroller however, and can in some cases require additional
-expensive hardware.
+high-cost tools.
 
 #### Difficulty
 
 Both QEMU-based emulators are very easy to use, with QEMU and Unicorn being
-widely used in the open-source community. gem5 is far less common (and has very
-limited documentation). The amount of work required to bring gem5's accuracy
+widely used in the open-source community. gem5 is far less common, and has very
+limited documentation. The amount of work required to bring gem5's accuracy
 and compatibility closer to real hardware could also be substantial. Setting up
 some of the more advanced debugging facilities on a real STM32F407 is also
 quite complex.
@@ -472,7 +471,7 @@ quite complex.
 Overall, *gem5 is really the only choice for a software option*, since neither
 xPack QEMU or Unicorn provide any sort of cycle accurate modelling. This is
 important for the purposes of the project, since the programs being analysed are
-short, hand-written assembly programs. As real STM32F4-based hardware has
+short, hand-written assembly. As real STM32F4-based hardware has
 inherently perfect accuracy and compatibility, high performance and the
 potential for a lot of instrumentation, it is worth exploring this avenue in
 addition to gem5.
@@ -494,14 +493,14 @@ consider when designing _Perfgrade_.
 ### Metrics
 
 Metrics are the types of raw data that can be collected in order to later
-generate useful information. It's important to keep in mind the types of
-metrics that can or need be collected - what metrics can be collected from a
-particular system and which are required to generate specific results.
+generate useful information. It is important to keep in mind the types of
+metrics that can or need to be collected from a particular system and which are
+required to generate specific types of results.
 
-When measuring performance, the simplest metric to
+When evaluating performance, the simplest metric to
 consider is a measure of execution time. The most basic form of such a metric is
 to run a timer or "stopwatch" while a program is running. A more precise and
-reliable method will be required to measure time for the types of short assembly
+reliable method would be required to measure time for the types of short assembly
 programs graded by the system.
 
 Aside from measuring execution time, this project will likely make use of another
@@ -535,8 +534,8 @@ Hardware:
 - is perfectly accurate
 - requires additional physical components for deployment (less flexible)
 - may require complex software infrastructure to manage
-- isn't extensible
-- may be difficult or impossible to measure metrics in detail
+- is not extensible
+- may make it difficult or impossible to collect certain metrics in detail
 
 ### Assignment configuration
 
@@ -544,13 +543,13 @@ Due to the nature of the assignments being graded, consideration needs to be
 taken for how to set up each assignment in the system. Not every problem can be
 graded with the same parameters: there will be specific test cases and
 potentially different sections of a program that should be measured. A flexible
-configuration system is therefore required to fulfil these requirements.
+configuration system is therefore required to fulfil these needs.
 
 An important factor to consider will be the ability to accept submissions and
 generate results in an appropriate format. Since creating an online grading
 interface is not in the scope of this project, the system will need to integrate
-with an existing platform. In addition, this integration would ideally be
-flexible enough to support another grading platform in future, if needed.
+with an existing platform. In addition, this integration mechanism would ideally
+be flexible enough to support another grading platform in future, if needed.
 
 ### Grading results
 
@@ -558,20 +557,19 @@ Once execution and collection of metrics through the assignment configuration
 system is completed, there should be two outputs: the performance grade and
 additional "informational results". That is, how well the submission performed
 represented as a score and other (arbitrary) information that doesn't directly
-contribute to the score value.
+contribute to the grade value.
 
 The most important aspect of this is how to calculate the performance grade or
-score. Given the types of metrics that might be collected, how can a number on
-a scale be generated? A cycle count gives a sort of "absolute" measure of how
+score. Given the types of metrics that might be collected, how can a useful
+value be generated? A cycle count gives a sort of "absolute" measure of how
 well a program performs, but this will need to be placed on a relative scale.
 It's also worth considering that the relationship between a cycle count and the
-scale may not be simple. An algorithm that runs in $O(n^2)$ time may not be
-that much worse than program running on $O(n)$ in the case of a particular
-assignment.
+scale may not be simple. An algorithm that runs in $O(n^2)$ time is not necessarily
+that much worse than a program running on $O(n)$ for certain applications.
 
 Any additional outputs that don't factor in to the performance grade need only
-be considered based on their usefulness to both instructors or students. Graphs
-or diagrams might help to show why a submission received a particular grade.
+be considered based on their usefulness to instructors or students. Graphs
+or diagrams might help to explain why a submission received a particular grade.
 
 ## High-level components
 
@@ -598,7 +596,7 @@ by the autograding platform. Note the distinct steps which are referenced by the
 platform.
 
 Additionally, it can be seen in the diagram that the system makes use of both
-a simulator ("software") and hardware. Both of these options are _almost_
+a simulator ("software") and hardware. Both of these options should be _mostly_
 interchangeable in terms of functionality (as will be discussed later).
 
 ### Assembler / Linker
@@ -620,26 +618,25 @@ A real STM32F4xx-based board is used to evaluate performance of the solution.
 ## Metrics
 
 Given the final choice of evaluation environments, the limits on the types of
-metrics that can be collected are set. There are two primary types:
-**Execution time** and **Tracing**.
+metrics that can be collected are set. There are two primary types used in this
+project: **Execution time** and **Tracing**.
 
 ### Execution time
 
 A measurement as crude as a stopwatch can be used to directly compare the
-performance of one program
-to another. If a program takes longer to execute than another, it stands to
-reason that it performs worse.
+performance of one program to another. This is often referred to as "real time"
+or "wall-clock time" [@wall_time]. If a program takes longer to execute than
+another, it stands to reason that it performs worse.
 Using some kind of timer to measure execution time doesn't make a lot of sense
-in the context of small, hand-written assembly programs. This is often referred
-to as "real time" or "wall-clock time" [@wall_time].
+in the context of small, hand-written assembly programs.
 
 CPU cycle counts would be a more precise measure of execution time, as the
 (generally) smallest unit of time a programmer can directly control. Although
-CPU features such as pipelining mean that execution of a single instruction does
-not directly correspond to a fixed number of CPU cycles, the there's a close
-association. The opportunity for variance or errors to arise when measuring
+CPU features (such as pipelining) mean that execution of a single instruction does
+not directly correspond to a fixed number of CPU cycles, there is a close
+association. The opportunity for variance or errors to occur when measuring
 performance using wall time would also increase through the use of operating
-systems and preemptive multitasking. When another task or process needs to
+systems and preemptive multitasking: when another task or process needs to
 execute, real time would continue to count up while the code being measured is
 not even running.
 
@@ -653,12 +650,12 @@ program, it would be possible to reconstruct the exact path the processor took.
 Additional data might be included for each instruction traced, such as the value
 of registers involved in the instruction (the "operands"), or the addresses and
 values of memory accessed (so-called "data tracing"). In rare cases, code
-executed might even by dynamically generated, so it may be necessary to include
-the value of the instruction itself in the trace.
+executed might even be dynamically generated, so it may be necessary to include
+the opcode of the instruction itself in the trace.
 
 Considering the speed of modern processors (and even microcontrollers, including
 the STM32F4xx-based chip used in this project), tracing can often generate a
-significant amount of data. As such, a simplified statisical method is often
+significant amount of data. As such, a simplified statistical method is often
 employed when profiling programs. In an example setup, a profiling tool might
 sample the value of the processor's program counter at an interval. This results
 in a much smaller volume of data, but won't affect accuracy too much in the case
@@ -681,7 +678,7 @@ Submitty-compatible output. These could be arranged in many configurations, each
 with specific options such as the value of test data to use.
 
 There are a number of possible design patterns that could fulfil this idea. One
-might be to follow gem5's Python configuration philosophy - write a script
+might be to follow gem5's Python configuration philosophy: write a script
 which instantiates and wires up the whole system. However, since assignments
 will likely follow a similar set up and pattern of performing one action and
 following it up with another that uses the results of the previous, this is
@@ -690,11 +687,11 @@ for each assignment.
 
 ![Blender's node editor for materials\label{fig:blender_nodes}](img/blender_nodes.png)
 
-One model that might be possible is to provide a "node editor". Figure
-\ref{fig:blender_nodes} shows an example of this user interface design from
+One model that might be suitable the idea of a "node editor". Figure
+\ref{fig:blender_nodes} shows an example of this user interface design in
 Blender, the free and open-source 3D graphics package [@blender_nodes]. Here,
-it's possible to connect a series of "nodes", each of which has a number of
-adjustable settings. The combination of different nodes' outputs to other nodes'
+it is possible to connect a series of "nodes", each of which has a number of
+adjustable settings. The combinations of various nodes' outputs to other nodes'
 inputs can produce vastly different resulting materials ("Material Output" is
 the final output node). The visual interface also makes it easier for users
 unfamiliar with scripting or programming.
@@ -706,20 +703,21 @@ assignment configuration system will be an instructor for a computer science
 course.
 
 DevOps is a popular set of software development practices that can be summarised
-as the combination of DEVelopment and OPerations [@devops]. Although flexible
-and sometimes loosely defined, there are often Continuous Integration and
+as the combination of software DEVelopment and OPerations [@devops]. Although flexible
+and sometimes loosely defined, there are usually Continuous Integration and
 Continuous Deployment stages (together referred to CI/CD). Here, changes to
 software are automatically built and tested (CI) before being automatically
 deployed (CD).
 
 The manner in which software is built and tested varies
-significantly, but the inputs and outputs are usually similar. Code to be
-tested exists in a version control system (VCS), such as Git. A CI/CD tool pulls
-this code and uses some kind of build tool to produce a result that can be
-evaluated (e.g. a binary executable). Following this, a test suite might be used
-to ensure the software behaves correctly. If the tests pass, a deployment tool
-can then be used to make the changes available to a wide audience, such as a web
-application.
+significantly, but the inputs and outputs between steps are usually similar:
+
+1. Code to be tested exists in a version control system (VCS), such as Git
+2. A CI/CD tool pulls this code and uses some kind of build tool to produce a
+   result that can be evaluated (e.g. a binary executable)
+3. A test suite ensures the software behaves correctly
+4. If the tests pass, a deployment tool is used to make the changes available to
+   a wide audience, such as re-provisioning servers for a web application
 
 ``` {.yaml label="lst:github-actions" caption="GitHub Actions pipeline example"}
 name: Build and deploy presentation
@@ -753,8 +751,8 @@ jobs:
 Listing \ref{lst:github-actions} is an example of a CI/CD pipeline, written
 for GitHub Actions. The purpose of this pipeline (or "workflow" as it is
 referred to on the GitHub Actions platform) is to "build" and deploy a
-the Reveal.js-based presentation for this project to GitHub Pages. Reveal.js is
-"an open source HTML presentation framework", allowing for the creation of
+Reveal.js-based presentation created for this project to GitHub Pages.
+Reveal.js is "an open source HTML presentation framework", allowing for the creation of
 slide presentations written in HTML [@revealjs]. GitHub Pages is "a static site
 hosting service that takes HTML, CSS, and JavaScript files straight from a
 repository on GitHub, optionally runs the files through a build process, and
@@ -764,10 +762,10 @@ In the given workflow, the conditions that must be met for the run to be
 triggered are laid out (on Git push to the `master` branch and when files under
 the `presentation` directory are modified). After this, a number of "steps" in
 the workflow process are defined. The details of exactly what each step does is
-unimportant, but each one performs some task (via a shell script or an external
-GitHub action created by another GitHub user) that modifies the environment,
+unimportant, but each one performs some task via a shell script or an external
+GitHub action created by another GitHub user. This step modifies the environment,
 whether that means installing dependencies or deploying changes to a remote
-system. The full extent of the syntax for GitHub Actions is defined in the
+system. The full extent of the syntax for GitHub Actions is defined in the platform's
 official documentation [@github_actions]. Note that the workflow is written in
 YAML (YAML Ain't Markup Language), a self-described "human friendly data
 serialization standard for all programming languages" [@yaml]. Often used as a
@@ -775,7 +773,7 @@ configuration file format, YAML can be translated into popular data exchange
 formats such as JSON, but is easier to write by hand.
 
 It could be argued the problem solved by CI/CD systems is analagous
-to configuration of assignments to be automatically graded. There are a number
+to configuration of autograding assignments. There are a number
 of steps to be taken, each of which may take a number of inputs and produce
 outputs (working in a temporary environment). An example step in the context of
 an automatically graded assignment might be the compilation of a student's
@@ -783,7 +781,7 @@ submission or calculation of a grade. Commonly used steps could be implemented
 in the platform (with configurable options) to reduce boilerplate. For increased
 flexibility, embedded scripting capabilities could be provided.
 
-The "pipeline" approach was decided upon for the implementation of the
+The "pipeline" approach was decided upon for the implementation of
 assignment configuration in _Perfgrade_, for its balance of flexibility and
 relative ease of use for instructors.
 
@@ -792,9 +790,9 @@ relative ease of use for instructors.
 It's important to establish the method(s) through which an actual grade will be
 calculated from metrics collected during submission evaluation. For the purposes
 of this project, the final performance grade will be derived solely from the
-execution time of a student's program. More specifically, "execution time" is
-the number of CPU cycles taken to complete the program, as previously alluded
-to. In order to generate the most accurate (or "fairest") grade, an iterative
+execution time of a student's program. More specifically, "execution time" refers
+the number of CPU cycles taken to complete the program, as previously discussed.
+In order to generate the most accurate (or "fairest") grade, an iterative
 approach was taken to refine grade value calculation.
 
 ```{.nasm label="lst:asm-loops" caption="ARM assembly grade testing program"}
@@ -836,21 +834,21 @@ test:
 Listing \ref{lst:asm-loops} shows the test program that was used to compare the
 results of different calculation methods. The program represents a series of up
 to 3 nested `for`-loops, simulating different classes of performance for a
-problem. The procedure for testing is to put a value in `r0` and call `test()`.
+submission. The procedure for testing is to put a value in `r0` and call `test()`.
 The number of iterations will then be $n$, $n^2$ or $n^3$, depending on how many
 blocks are commented out. In listing \ref{lst:asm-loops} the value will be
-$n^2$, since the innermost loop is commented out.
+$n^2$, since the innermost loop is effectively disabled.
 
 ### Raw cycle count
 
-Given the previously discussed "absolute" nature of a cycle count (where a
-"relative" value is needed to compare solutions and place them on a scale),
+Given the previously discussed "absolute" nature of a cycle count, where a
+"relative" value is needed to compare solutions and place them on a scale,
 little time was spent considering a raw cycle count value for grading.
 
 ### Bucket grading
 
-The idea of so-called "bucket grading" is to place a cycle count value of one
-of a number possible "buckets". Then, using a mapping function (in the
+The idea of so-called "bucket grading" is to place a cycle count value in one
+of a number of possible "buckets". Then, using a mapping function (in the
 mathematical sense), a relative grade value can be calculated. Having a specific
 mapping function for each bucket allows different "classes" of performance to
 be graded on different scales.
@@ -859,11 +857,11 @@ be graded on different scales.
 
 Figure \ref{fig:bucket_grading_sketch} illustrates roughly how bucket grading
 might work. The X-axis represents any cycle count measured from a submission,
-with the Y-axis showing the associated grade. The vertical lines
-represent a "buckets", with a distinct cycle-grade curve for each. The beginning
+with the Y-axis showing the associated grade value. The vertical lines
+represent the "buckets", with a distinct cycle-grade curve for each. The beginning
 and end of each bucket could be defined based on experimentally measured cycle
 counts for different classes of performance. Anything left of the leftmost
-line (the lowest possible cycle counts) would result in a performance grade of
+line, the lowest possible cycle counts, would result in a performance grade of
 100%. Anything to right of the line function for the rightmost bucket would give
 0%.
 
@@ -872,7 +870,7 @@ line (the lowest possible cycle counts) would result in a performance grade of
 "Computational complexity" refers to the general processing resources required
 to run an algorithm. Worst-case performance is often denoted using big-O
 notation [@complexity_analysis]. In $O(n^k)$, estimating the value of $k$ could
-prove a useful metric to grade an assignment with. Performing this estimation
+provide a useful metric to grade an assignment with. Performing this estimation
 is made relatively easy through the use of a log-log plot. The slope of a
 function $t = n^k$ plotted in log-log is equal to the value of $k$
 [@loglog_complexity].
@@ -884,14 +882,14 @@ approximation for $k$ in $O(n^k)$. This value of $k$ could be very easily used
 to generate a grade.
 
 Overall, a combination of the bucket grading and log-log methods seems to make
-the most sense. Here, the value on the X-axis for bucket grading can simply
+the most sense. Here, the cylce count on the X-axis for bucket grading can simply
 be swapped for the estimate of $k$, with buckets and curves being adjusted
 accordingly. This has the benefit of incorporating a number of evaluations and
-using a more easily digestable input value to a bucket's grading function.
+using a more easily digestable value as the input to a bucket's grading function.
 
 ## Informational results
 
-Aside from the numerical grade given assigned to a given submission, other
+Aside from the numerical grade assigned to a given submission, other
 results that might inform instructors or students could be quite useful. A few
 visual outputs were devised for this project.
 
@@ -899,11 +897,11 @@ visual outputs were devised for this project.
 
 ![Augmented grade curve sketch\label{fig:grade_curve_sketch}](img/grade_curve_sketch.jpg)
 
-The grade curve is essentially a very slight expansion and real implementation
+The grade curve is essentially a slight expansion and real implementation
 of the sketch shown in figure \ref{fig:bucket_grading_sketch}. Figure
 \ref{fig:grade_curve_sketch} shows a sketch of this graph. The only changes
 are the swapping of the X-axis label from "Cycles" to "log-log slope" and the
-addition of a "Your grade" dot. The X-axis has been updated in accordance with
+addition of a "Your grade" point. The X-axis has been updated in accordance with
 the combined grade calculation method described in the previous section and the
 red dot shows the location on the curve of a sample submission. This allows
 students to see what kind of improved grade they could get for a reduction in
@@ -917,7 +915,8 @@ Figure \ref{fig:performance_curve_sketch} shows what is essentially a
 visualisation of the data collected to produce the log-log plot. However, this
 graph plots input size directly against cycle count, allowing the type of
 function to be inferred. Curve-fitting could also be applied to guess the class
-of function and draw the fitted function through the points of actual data. This
+of function. The fitted function could then be drawn through the points of
+actual data. This
 can show instructors and students how their algorithm scales directly with the
 size of the input.
 
@@ -925,12 +924,12 @@ size of the input.
 
 !["Heatmap" sketch\label{fig:heatmap_sketch}](img/heatmap_sketch.png)
 
-A heatmap typically refers to the representation of a matrix on a grid with
-colour shading used to represent the value of a cell [@heatmap]. Figure
+A heatmap typically refers to the representation of a data matrix on a grid with
+colour shading used to represent the value of each cell [@heatmap]. Figure
 \ref{fig:heatmap_sketch} shows a sort of "1D" variant of this applied to the CPU
 instructions from the loop program (listing \ref{lst:asm-loops}). The "heat" of
-a line indicates how much of the program's total execution time (cycles) was
-taken up by an instruction on that line. The loop program demonstrates this
+a line indicates how much of the program's total execution time (in cycles) was
+taken up by an instruction on that line. The loop program demonstrates this quite
 well, showing how the nested loop instructions are progressively "hotter". The
 "cold" gaps are lines that don't actually generate instructions when assembled,
 such as labels or empty space. Instructors and students can use this to identify
@@ -949,10 +948,10 @@ attempted for this project.
 
 Configuring and using gem5 is somewhat non-trivial when compared with other more
 commonly used emulators (such as QEMU), especially given the overall lack of
-documentation for the project. Documentation is provided for building the
+documentation for the project. Instructions are provided for building the
 simulator from source, which is necessary as binary distributions aren't
 provided. gem5 is built for a specific ISA-variant pair, which would lead to
-a significant matrix of binaries [@gem5_building].
+a significant matrix of binaries in a distribution [@gem5_building].
 
 The ISA in this project's case is ARM, since an ARM-based platform is being
 simulated. The primary variant used is `opt`, which includes compiler
@@ -977,9 +976,9 @@ build/ARM/gem5.opt [global options] <config script path> [script options]
 ```
 
 "Global options" are read by the C++ implementation pieces and are used to
-configure internals such as which runtime debug features are enabled. All
+configure internals such as the runtime debug features that are enabled. All
 remaining arguments are passed to the configuration script, which can be
-accessed via `sys.argv` as normal. Note that the configuration script _must_ be
+accessed via Python's `sys.argv` as normal. Note that the configuration script _must_ be
 provided; without it no components in the simulator can be instantiated or used.
 
 ### CPU accuracy
@@ -990,7 +989,7 @@ STM32F407, care must be taken when setting up the CPU. Out of the available over
 models, `Minor` most closely emulates the 3-stage pipeline with branch prediction
 of the Cortex-M4 [@cortex_m4]. `O3` is a more advanced model, but this implements
 out-of-order execution, which is not a feature of a real Cortex-M4. Models
-derived from the `SimpleCPU` are designed to execute non-critical sections of
+derived from `SimpleCPU` are designed to execute non-critical sections of
 code as quickly as possible and do not accurately model CPU operations.
 
 ``` {.python label="lst:gem5-cpu" caption="Snippet from CPU model parameters"}
@@ -1012,7 +1011,7 @@ on what impacts the number of cycles required is provided. It is likely that
 access to proprietary ARM IP would be required to obtain this information.
 Some of gem5's sample configuration files make use of a sort of mini-DSL to
 determine the number of cycles taken for certain instructions. Relatively
-complex logic is sometimes used derive this value from the instruction opcode
+complex logic is sometimes used to derive this value from the instruction opcode
 and operands, for example in `configs/common/cores/arm/HPI.py` (within the gem5
 source tree).
 
@@ -1047,17 +1046,17 @@ single mandatory argument: `rom`. This is the path to a raw firmware image
 (in the same format as the contents of the ROM on a real STM32F4-based
 microcontroller). Configuration scripts provided with gem5 usually load either
 a user-mode ELF application or a Linux kernel `Image`, but in this case the raw
-firmware is used (with the entrypoint being determined by the reset handler
-entry in the vector table).
+firmware is used, with the entrypoint being determined by the reset handler
+entry in the vector table.
 
-`--wait-gdb` is just used to tell the gem5 CPU object to wait for a gdb
+`--wait-gdb` can be used to tell the gem5 CPU object to wait for a gdb
 connection (gem5 provides a `gdbserver` implementation for the simulated
 platform), which is useful for debugging simulated code.
 
 The `--test-*` flags are used to control the loading of arbitrary data into
-memory at runtime. `--test-data` is the file to load (raw binary), `--test-addr`
-is the address at which to load it and `--test-pc` (if specified) causes the
-data to be loaded only when the program counter equals a certain value.
+memory at runtime. `--test-data` specifies the file to load (raw binary), `--test-addr`
+the address at which to load it and `--test-pc` (if provided) causes the
+data to be loaded only when the program counter reaches a certain value.
 
 `--dump-ranges` is a comma-delimited list of `address:size` pairs which denote
 ranges of memory to dump to disk on simulator exit. Each pair will result in a
@@ -1101,19 +1100,19 @@ instantiated (effectively common to all gem5 configuration scripts), the CPU
 and memories in the system are configured. Listing \ref{lst:gem5-config-mem}
 shows this. `CM4Minor` is the overall CPU object, as defined in the `common.py`
 file described in the previous section. What follows the instantiation of the
-CPU is the setup of a memory bus (with a `BadAddr` responder to prevent gem5
-from crashing on an attempt to access an unmapped address).
+CPU is the setup of a memory bus, with a `BadAddr` responder to prevent gem5
+from crashing in the case of an attempt to access an unmapped address.
 
 Only four memory objects are used in the configuration for this project. All use
 the gem5 `SimpleMemory`, whose simulated characteristics are roughly equivalent
-to SRAM; employing fixed latency. As mentioned previously, gem5 implements
-sophisticated modelling of DRAM, but this is not required for most use of a
-Cortex-M4. The layout of each of the memories follows the Cortex-M4's memory
+to SRAM, employing fixed latency. As mentioned previously, gem5 implements
+sophisticated modelling of DRAM, but this is not required for most uses of a
+Cortex-M4. The layout of the memories follows the Cortex-M4's memory
 map [@cortex_m4], although greatly simplified. Only the SRAM, ROM (with its
 alias at `0x00000000`) and the System Control Space (SCS) are mapped.
 
 While gem5 can model an MMU to define memory access permissions, this involves
-far more complex concepts (such as caches, a TLB, etc) than are needed for this
+far more complex concepts (such as caches, a TLB, etc.) than are needed for this
 project. The MPU implemented in the Cortex-M4 is quite different to a full MMU
 and is not supported in gem5. As a result, all memory (including ROM) is
 readable, writable and executable. In practice, this has no impact on the types
@@ -1193,10 +1192,10 @@ boils down to a series of unconditional steps. In the constructor:
    from disk.
 2. The address of the entry point is read from the vector table. As defined by
    the ARMv7-M architecture, the vector table is at address `0x00000000` and
-   the reset handler is at offset 0x4 in within the table [@armv7m].
+   the reset handler is at offset `0x4` in the table [@armv7m].
 3. The reset handler's address is written into the workload's symbol table as
    `_start`. Debugging output from gem5 will show addresses relative to this
-   symbol.Normally this would be filled from a symbol table in an ELF
+   symbol. Normally this would be filled from a symbol table in an ELF
    executable.
 
 In `initState()`:
@@ -1218,7 +1217,7 @@ In `initState()`:
 `PerfgradeTracer`, as described, replaces the default tracer implementation in
 gem5 in order to generate trace data that is easier to process later (for
 anaylsis). It is essentially a simplified version of the default tracer that
-creates a protocol buffer-based output file instead of print human-readable
+creates a protocol buffer-based output file instead of logging human-readable
 trace information. Its C++ implementation is located at
 `src/perfgrade/tracer.cc`, along with its Python binding at
 `src/perfgrade/PerfgradeTracer.py`.
@@ -1260,21 +1259,22 @@ message's length and transparently providing gzip compression (if desired).
 
 The `PerfgradeTracer` class then acts as a fairly simple implementation of
 `Tracer::InstTracer`, including all of the information in the protobuf
-definition. On startup, a `Header` message is written which specifies the tick
+definition. On startup, a `Header` message is written, which includes gem5's
+internal tick
 frequency. When `TracerRecord::dump()` is called, an `ExecTrace` message is
 written out to file. `upc` is the "micro-op program counter" value, which is
 relevant in the case of instructions that are broken down into so-called
 micro-ops, such as `ldm`, which breaks down into a series of loads [@armv7m].
 `predicate` is always true, unless a conditional instruction (e.g. `beq`)
-is not executed. `data`'s value varies, generally meaning the result of an
-operation (e.g. the sum of an `add`). `mem` is present only in the case of a
+is _not_ executed. `data`'s value varies, generally meaning the result of an
+operation, such as the sum of an `add`. `mem` is present only in the case of a
 memory access.
 
 ### Loading and dumping memory for testing
 
 In order to aid with testing, the `MemDump` `SimObject` provides some helper
-methods. While the prior two custom objects only take a single parameter each
-across the Python binding layer , `MemDump` exports 3 methods this way, along
+methods. While the other two custom objects only take a single parameter each
+across the Python binding layer, `MemDump` exports 3 methods this way, along
 with requiring a `System` object as a parameter (in order to access memory).
 This binding file is located at `src/perfgrade/MemDump.py`. The C++
 implementation, at `src/perfgrade/mem_dump.cc`, is relatively simple. It mostly
@@ -1285,7 +1285,7 @@ relies on the infrastructure provided by gem5's internals.
 This method is typically called once the simulation has finished (see the
 configuration script), and accepts a filename and address range. The contents
 of memory in the address range is read into a simple buffer using the `System`
-object's physical memory proxy (traversing the configured memory bus). gem5's
+object's physical memory proxy that traverses the configured memory bus. gem5's
 `OutputStream` class is then used to write the contents of this buffer out to a
 file in the globally configured output directory.
 
@@ -1301,7 +1301,7 @@ Works in exactly the same manner as `load()`, but defers the actual operation to
 a point in time when the program counter reaches the provided
 value, taking advantage of gem5's event-based architecture. The use of this
 function is to get around certain initialization routines which can zero out
-space allocated for test data (in the `.bss` section). `PCEvent` is a type
+space allocated for test data in the `.bss` section. `PCEvent` is a type
 of event provided by gem5 that is processed when the program counter equals a
 certain value. `LoadEvent` extends this class with a `process()` method
 that simply performs the same operation as `load()`. `loadWhen()` queues an
@@ -1309,11 +1309,11 @@ appropriate `LoadEvent` when called.
 
 ### Stopping the simulation
 
-While a user-mode program typically exits using an `exit()` syscall (or
-equivalent on non-Unix systems), there is no equivalent in the case of a
+While a user-mode program typically exits using an `exit()` syscall (or other
+equivalent on non-Unix systems), there is no such analogue in the case of a
 microcontroller. Simple programs typically lock the processor in an infinite
-loop when complete. Since simulations often need to have a definite end (such as
-in the case of this project's evaluation of submissions), gem5
+loop when complete. Since simulations often need to have a definite end (as
+is the case for this project's evaluation of submissions), gem5
 provides a solution via its "`m5ops`". These are fake CPU opcodes that gem5
 implements to perform simulator-specific operations, such as dumping statistics,
 switching the CPU model or shutting down the simulation altogether
@@ -1323,13 +1323,13 @@ the opcode for the `exit` op.
 ## Unified firmware
 
 In order to simplify evaluation of programs in both hardware and software, a
-sort of "unified firmware" support was created. Essentially, this is specialised
-microcontroller startup code which is set up to support running in both a
+sort of "unified firmware" was created. Essentially, this is specialised
+microcontroller startup code which is designed to support running in both a
 simulator and real hardware. When linking a submission to this code, the final
-firmware image can run unmodified in both environments. In theory a perfect
+firmware image can run unmodified in both environments. In theory, a perfect
 simulator wouldn't require any specific code to account for differences in
 the environment. However, with gem5 not being set up to simulate a Cortex-M4 and
-diminishing returns on attempting to improve simulation accuracy, it's easier to
+diminishing returns when attempting to improve simulation accuracy, it is easier to
 make some exceptions for specific differences. Assignments typically require the
 submission of a source file with just their solution code, so startup code is
 needed anyway.
@@ -1338,14 +1338,15 @@ needed anyway.
 
 `libopencm3` is a free and open-source project that aims to create a "firmware
 library for various ARM Cortex-M3 microcontrollers, including ST STM32 and
-others". Originally created as `libopenstm32` for STM32 Cortex-M3-based boards,
+others". Originally named `libopenstm32` for STM32 Cortex-M3-based boards,
 support has been greatly expanded and includes STM32F4-based microcontrollers
-[@libopencm3]. While it doesn't provide a high-level HAL or implement helpers to
+[@libopencm3]. While the library doesn't provide a high-level HAL or implement
+helpers to
 support all of the peripherals exposed by the STM32F407, almost all of the
 hardware registers are defined and a `make`-based build template is available
 (`libopencm3-template`). `libopencm3`'s only dependency is an `arm-none-eabi`
-toolchain. The source tree for the helper code is located at
-`app/perfgrade/build/`. Each of the important components will be described in
+toolchain. The source tree for the unified firmware is located at
+`app/perfgrade/build/`. Each of the main components will be described in
 their own section.
 
 ### `rules.mk` and `Makefile`
@@ -1375,13 +1376,13 @@ include rules.mk
 include $(OPENCM3_DIR)/mk/genlink-rules.mk
 ```
 
-These are mostly copied from the project template provided by `libopencm3` and
-follow a fairly typical pattern: `rules.mk` contains a set of common `make`
-rules and all of the sources and options are defined in the top-level
+These are mostly copied from the template provided by `libopencm3` and follow a
+fairly typical pattern for `make`-based projects: `rules.mk` contains a set of
+common `make` rules and all of the sources and options are defined in the top-level
 `Makefile` (listing \ref{lst:fw-makefile}).
 
-- The final target's basename (`$PROJECT`) is set up to be `perfgrade`
-  (producing binaries like `perfgrade.elf` and `perfgrade.bin`).
+- The final target's basename (`$PROJECT`) is set up to be `perfgrade`,
+  producing binaries like `perfgrade.elf` and `perfgrade.bin`.
 - `$DEVICE` is set to `stm32f407vgt6`, which is the exact chip used in the
   STM32F4 Discovery board. `libopencm3` will automatically generate a linker
   script based on this definition.
@@ -1413,8 +1414,8 @@ m5_exit:
 
 Listing \ref{lst:fw-util} shows the entire `src/util.S`. It provides a single
 "function" (whose signature is defined in `include/util.h`): `m5_exit()`. This
-is just an implementation of the `exit` `m5op` (as described in the gem5
-evaluation section). Since the `m5ops` use fake opcodes, assembler directives
+is just an implementation of the `exit` `m5op` as described in the gem5
+evaluation section. Since the `m5ops` use fake opcodes, assembler directives
 are used to write them into the output. The `bx lr` is actually unnecessary,
 since the simulation stops immediately upon encountering an `exit`.
 
@@ -1422,7 +1423,7 @@ since the simulation stops immediately upon encountering an `exit`.
 
 This file contains the actual `main()` function, which is called by
 `libopencm3`'s implementation of the reset handler (at `lib/cm3/vector.c` in the
-`libopencm3` source tree). The reset handler does a minimal set of tasks before
+`libopencm3` source tree). The reset handler performs a minimal set of tasks before
 calling `main()`, loading data into memory from the `.data` section, zeroing
 data in the `.bss` section and executing constructors.
 
@@ -1475,19 +1476,19 @@ magic value written to it in the simulator case (as previously discussed).
 If not running in gem5, (i.e. `!is_sim()`), the `libopencm3` function
 `rcc_clock_setup_pll()` is used to set the core clock for the STM32F407. By
 default, the 16MHz internal oscillator is used to drive all clocks on the chip,
-(including `HCLK` / `SYSCLK`, the core clock [@stm32f407]. In order to maximise
-performance, the core clock is increased to 168MHz, which is the highest
+including `HCLK` / `SYSCLK`, which is the core clock [@stm32f407]. In order to
+maximise performance, the core clock is set to 168MHz, which is the highest
 recommended value [@stm32f407vg].
 
 The process through which this is achieved is
 relatively complex, and involves a series of registers within the Reset and
 Clock Control (RCC) peripheral. These set the values for a number of clock
-divisors, multipliers and the Phase-Locked Loop (PLL). Each component has a its
-own range of operation, so each parameter must be balanced to achieve the final
-desired clock speed. Clocks for other components, such as on the peripheral
-bus (APB) must be considered. `rcc_clock_setup_pll()` abstracts away this
+divisors, multipliers and the Phase-Locked Loop (PLL). Each component has its
+own range of operation, so the parameters must be balanced to achieve the final
+desired clock speed. Clocks for other components, such as those on the peripheral
+bus (APB), must be considered. `rcc_clock_setup_pll()` abstracts away this
 process, making use of the PLL. `libopencm3` contains a set of preset
-configurations based around specific clock speeds -
+configurations based around specific clock speeds;
 `rcc_hse_8mhz_3v3[RCC_CLOCK_3V3_168MHZ]` uses the external 8MHz crystal
 oscillator to achieve a `HCLK` / `SYSCLK` of 168MHz.
 
@@ -1499,15 +1500,15 @@ evaluation section).
 `#pragma weak` is used to weakly set the value of this symbol to `null_do()`.
 Since special code might be required to set up and jump into the test code, the
 default provided by `null_do()` can then be redefined by an optional custom test
-harness that is linked in later. `__asm__()` is used to export a symbol
+harness linked in at a later stage. `__asm__()` is used to export a symbol
 `test_end` once `do_test()` returns to allow the address of the first instruction
 following test code completion to be determined programmatically.
-`finish_test()`, which is weakly assigned to `null_finish()` (which does
+`finish_test()`, which is weakly assigned to `null_finish()` (a function that does
 nothing), can also be re-defined later if custom test cleanup code is needed.
 
 If the firmware is running in hardware, `rcc_clock_setup_pll()` is used again
-to reduce the core clock all the way down to 2MHz so that the microcontroller
-isn't left in an infinite loop at high frequency for an extended period once
+to lower the core clock all the way down to 2MHz so that the microcontroller
+is not left in an infinite loop at high frequency for an extended period once
 `main()` returns. `hsi_2mhz` configures all of the necessary clock components
 to run off of the internal oscillator with a final core clock of 2MHz. The
 complete configuration can be found in the non-abridged `src/main.c`.
@@ -1532,12 +1533,12 @@ include the ability to flash firmware and a `gdbserver` implementation
 `libopencm3`'s `make` rules and OpenOCD make it quite easy to debug code on the
 STM32F4 Discovery board. Setting up the debug adapter is as easy as connecting
 a mini USB cable to the STM32F4 Discovery board, which presents the ST-LINK/V2
-to the host [@stm32f4_discovery]. the `perfgrade.flash` target will make use of
+to the host [@stm32f4_discovery]. The `perfgrade.flash` rule will make use of
 OpenOCD to flash firmware to the board. Running
 `openocd -f board/stm32f4discovery.cfg` will start an OpenOCD server which
-connects to the debugger, using a pre-made configuration designed specifically
-for the Discovery board. Port 4444 runs a `telnet` server which can be used to
-execute OpenOCD-specific commands, such as flashing firmware. A `gdbserver` will
+connects to the debugger using a pre-made configuration designed specifically
+for the Discovery board. Port 4444 exposes a `telnet` server which can be used to
+execute OpenOCD-specific commands, such as for flashing firmware. A `gdbserver` will
 be opened on port 3333, and a `gdb` build supporting ARM can then be used to
 step through the firmware running on the board.
 
@@ -1547,11 +1548,11 @@ As alluded to in the unified firmware section, the ARMv7-M's standard Debug and
 Watchpoint Trace unit (DWT) can be used to count cycles on the STM32F407. The
 only setup needed is to write a 1 to the `CYCCNTENA` bit in the `DWT_CTRL`
 register, which is done by `libopencm3`'s `dwt_enable_cycle_counter()` function.
-Following this `DWT_CYCCNT` will increment for every cycle of the core clock
+Following this, `DWT_CYCCNT` will increment for every cycle of the core clock
 [@armv7m]. Additionally, `DWT_CYCCNT` can be written to in order to reset its
 value.
 
-### PyOCD and automation
+### pyOCD and automation
 
 While OpenOCD is a popular and well-supported tool for interfacing with
 STM32 microcontrollers, it doesn't lend itself very well to automation. In order
@@ -1563,9 +1564,9 @@ with Cortex-M-based microcontrollers. By utilising standardised "CMSIS packs"
 supports the majority of Cortex-M products on the market [@pyocd].
 
 In many cases pyOCD can act as a drop-in replacement for OpenOCD, since it
-provides its own CLI and `gdbserver` implementation. Its real value to this
+provides its own CLI and `gdbserver` implementation. Its main value for this
 project is its Python API, however. Since the Perfgrade platform is written in
-Python, it's possible to use pyOCD to directly interact with a microcontroller
+Python, it is possible to use pyOCD to directly interact with a microcontroller
 in a normal program. For example, setting a breakpoint is as simple as
 calling `target.set_breakpoint(addr)`.
 
@@ -1579,7 +1580,7 @@ successful.
 
 ### The Embedded Trace Macrocell
 
-ARM defines the Embedded Trace Macrocell (ETM) as a standard part of the
+ARM defines the Embedded Trace Macrocell (ETM) as a standard part of their
 CoreSight Architecture. Variations of the ETM are implemented across ARM's
 products, including high-performance Cortex-A cores. The ETM "is a real-time
 trace module providing instruction and data tracing of a processor" [@etm].
@@ -1588,12 +1589,12 @@ specific parameters and behaviour of an ETM for different ARM cores. For a
 Cortex-M4 microcontroller, the ETM is specifically referred to as the ETM-M4
 [@etm_m4]. This is an optional component for the Cortex-M4 (which *is* included
 in the STM32F407) that supports only instruction tracing (no data) and its
-output is often incorporated into the Trace Port Interface Unit, as is the case
+output is often fed into the Trace Port Interface Unit, as is the case
 for the STM32F407 [@stm32f407].
 
-One implementation that's not immediately obvious with the ETM-M4 is support
-for cycle-accurate tracing, which is actually optional as specified in the main
-ETM manual. The official procedure to check for cycle-accurate tracing support
+One implementation detail that is not immediately obvious with the ETM-M4 is support
+for cycle-accurate tracing, which is actually optional (as specified in the main
+ETM manual). The official procedure to check for cycle-accurate tracing support
 is to write to write a 1 to bit 12 in the `ETMCR` (ETM Control Register) and
 check if the value remains set afterwards [@etm]. The ETM-M4 manual's specifies
 that bit 12 of the `ETMCR` is "Reserved" and attempting write a 1 to this bit
@@ -1602,7 +1603,7 @@ successful tracing was achieved.
 
 Typically, interfacing with the ETM requires the use of expensive hardware and
 proprietary software, such as ARM's own ULINKpro, which was priced as $1,250
-(at time of writing) and is designed for use with Keil uVision [@ulink_pro]. The
+(at time of writing) and is designed for use with Keil µVision [@ulink_pro]. The
 high cost is partially due to the fact that high performance (potentially
 multi-GHz) cores will produce a significant amount of trace data, which is
 difficult to process.
@@ -1621,8 +1622,8 @@ There are two primary output modes:
   Often used with the Instrumentation Trace Macrocell as a
   pseudo serial port. Baud rate is CPU clock divided by a configurable amount.
 - Synchronous. A parallel interface of configurable width (1 to 4 bits for
-  Cortex-M4). Provides its own clock which is operates at half of the core
-  clock, but data should be read on both the falling and rising edges.
+  Cortex-M4). Provides its own clock which operates at half of the core
+  clock, but data should be read on both the rising and falling edges.
 
 Asynchronous mode is easier to set up and requires only a single pin but
 synchronous mode can be more reliable (with a dedicated clock signal) and
@@ -1639,14 +1640,14 @@ clone of a Saleae logic analyser that is based around a Cypress FX2 chip
 [@saleae_clone]. The Cypress FX2 is essentially a general purpose
 high-bandwidth USB microcontroller, allowing the implementation of virtually
 any wire protocol over USB using a "General Purpose Programmable Interface
-(GPIF)" [@cypress_fx2]. This makes it ideal for use as a logic analyser.
+(GPIF)" [@cypress_fx2]. This makes it ideal for use as a low-cost logic analyser.
 
 In order to capture and analyse signals with `libsigrok`, a tool such as the
 `sigrok-cli` or PulseView (Qt-based GUI) is used. sigrok uses the `fx2lafw`
 firmware (a sub-project of sigrok) to capture signals with Cypress FX2-based
 logic analysers [@fx2lafw]. sigrok makes use of a "stacking" protocol decoder
-system. This allows the output of one decoder to be passed to another. This
-modular design allows complex protocols to reuse existing decoders. For example,
+system. This allows the output of one decoder to be passed as the input to another.
+"Stacking" allows complex protocols to reuse existing decoders. For example,
 many protocols can be "stacked" atop the UART decoder if they are based on data
 from a serial port.
 
@@ -1654,16 +1655,16 @@ from a serial port.
 
 ![Sample SWO-based trace data in PulseView\label{fig:trace-swo}](img/tracing_swo.png)
 
-As part of an article about tracing on STM32 platforms, sigrok protocol decoders
+As part of an article on tracing with STM32 platforms, sigrok protocol decoders
 for the TPIU and ETM were contributed to sigrok.
 This article additionally describes the general setup required to start
-capturing on a microcontroller and viewing this data in PulseView
+capturing traces on a microcontroller and viewing this data in PulseView
 [@stm32_tracing]. Figure \ref{fig:trace-swo} shows the TPIU and ETM protocol
 decoders stacked on top of a UART decoder.
 
 Note that this is using sample data
-provided by the author of the article - capturing SWO data at high baud rates
-(8 megabaud as suggested) proved to be unstable and often corrupted. The focus
+provided by the author of the article: capturing SWO data at high baud rates
+(8 megabaud, as suggested) proved to be unstable and often corrupted. The focus
 for tracing in this project shifted to the TPIU's synchronous mode, which is not
 implemented by the TPIU and ETM decoders included with sigrok.
 
@@ -1682,7 +1683,9 @@ required pins [@stm32f407]:
 - `PE3` to `PE6` (aka `TRACED0` to `TRACED3`; brown, red, grey and purple).
   Parallel data pins for synchronous TPIU mode.
 - `PD12` (black). Connected to green LED on STM32F4 discovery board
-  [@stm32f4_discovery], used for debugging and testing of logic analyser.
+  [@stm32f4_discovery], used for debugging and testing of the logic analyser.
+
+### ETM configuration
 
 ``` {.c label="lst:trace-gpio" caption="Releasing trace pins from GPIO"}
 rcc_periph_clock_enable(RCC_GPIOE);
@@ -1690,13 +1693,11 @@ gpio_mode_setup(GPIOE, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO2 | GPIO3 | GPIO4 | GPI
 gpio_set_af(GPIOE, GPIO_AF0, GPIO2 | GPIO3 | GPIO4 | GPIO5 | GPIO6);
 ```
 
-### ETM configuration
-
 Once the hardware is set up, a multitude of registers must be configured to
 generate trace data in the appropriate format. A test firmware utilising
 `libopencm3` was written for this task. Before all of these registers can be
-written however, the required means must be released from GPIO. Listing
-\ref{lst:trace-gpio} shows this process, making use of `libopencm3`'s GPIO
+written however, the required pins must be released from GPIO use. Listing
+\ref{lst:trace-gpio} shows this process, making use of `libopencm3`'s
 abstraction functions.
 
 ``` {.c label="lst:trace-dbgmcu" caption="Enabling the trace pins"}
@@ -1712,7 +1713,7 @@ writing to the Debug MCU configuration register or `DBGMCU_CR` [@stm32f407].
 Listing \ref{lst:trace-dbgmcu} shows `TRACE_IOEN` being set to 1 along with the
 appropriate value for 4-bit synchronous mode in `TRACE_MODE`.
 
-``` {.c label="lst:trace-tpiu-config" caption="Enabling the trace pins"}
+``` {.c label="lst:trace-tpiu-config" caption="Configuring the TPIU"}
 // Enable access to TPIU registers
 SCS_DEMCR |= SCS_DEMCR_TRCENA;
 // Port is 4 bit
@@ -1734,8 +1735,8 @@ Once the trace pins are configured, the TPIU must be set up. Listing
    configures the width of the TPIU's parallel port, which in this case should be
    4-bit, the maximum for the Cortex-M4 [@armv7m].
 3. The `TRIGIN` and `ENFCONT` bits of the TPIU Formatter and Flush Control
-   Register (`TPIU_FFCR`) are set so that the TPIU emits a sequence when tracing
-   begins and always formats input data [@cortex_m4].
+   Register (`TPIU_FFCR`) are set so that the TPIU emits a recognisable sequence
+   when tracing begins and always formats input data [@cortex_m4].
 4. Finally, the TPIU Selected Pin Protocol Register (`TPIU_SPPR`) is set to 0 to
    select parallel trace mode.
 
@@ -1766,12 +1767,12 @@ DWT_FUNCTION(1) |= 0b1000;
 In order to limit the generation of trace data to just the test code, the
 previously mentioned DWT can be used. Listing \ref{lst:trace-dwt-config} shows
 configuration of 2 of the DWT's comparators to trigger when the PC reaches the
-start and end of the test code respectively [@armv7m]. The exact setup process
+start and end of the test code respectively [@armv7m]. The precise setup process
 will not be described, but essentially:
 
 1. The comparator's value is set to the address of the labels defined for the
    start or end
-2. Address masking is disabled (exact match)
+2. Address masking is disabled (to force an exact match)
 3. The comparator is set to address comparison mode (PC value)
 4. The comparator is set to generate a `CMPMATCH` event, which is fed into the
    ETM
@@ -1809,7 +1810,7 @@ At this point, only the ETM itself is left to configure. Listing
 4. The CoreSight Trace ID Register (`ETMTRACEIDR`) sets the stream ID of
    ETM data in the TPIU (since multiple components are multiplexed into the TPIU).
 5. The `TCENABLED` bit is set in the TraceEnable Control 1 register (`ETMTECR1`)
-   in order to enable of control trace start/stop logic.
+   in order to enable of control trace generation with the start/stop block.
 
 ``` {.c label="lst:trace-etm-trigger" caption="Defining ETM start/stop conditions"}
 // Generate trigger on CMPMATCH[0]
@@ -1834,14 +1835,14 @@ Finally, the start/stop behaviour of the ETM is configured. Listing
 \ref{lst:trace-etm-trigger} details:
 
 1. The Trigger Event Register, `ETMTRIGGER`, is set to generate a trigger event
-   (which can later be read in the stream) when the DWT `CMPMATCH[0]` event is
-   raised. This was previously set up to correspond to the start of the test
-   code.
+   (which can later be identified in the TPIU stream) when the DWT `CMPMATCH[0]`
+   event is raised. This was previously set up to correspond to the start of the
+   test code.
 2. The TraceEnable Event Register (`ETMTEEVR`) is set to always be on, since the
    start/stop block of the ETM is being used to control trace behaviour (as
    set earlier).
 3. Tracing is set to start on `CMPMATCH[0]` and stop on `CMPMATCH[1]` by writing
-   to theTraceEnable Start/Stop EmbeddedICE Control Register (`ETMTESSEICR`).
+   to the TraceEnable Start/Stop EmbeddedICE Control Register (`ETMTESSEICR`).
    In the ETM-M4, "EmbeddedICE watchpoint comparators" refer to the DWT
    comparators, hence the connection to `CMPMATCH[x]` [@etm_m4].
 4. Programming mode of the ETM is exited by clearing the `PROGRAMMING` bit in
@@ -1862,11 +1863,11 @@ Once all of the configuration is done, TPIU data will appear on the trace pins
 as shown in figure \ref{fig:trace-synchronous}. As mentioned previously, the
 decoders for TPIU and ETM data included with sigrok don't support decoding
 synchronous mode data. Additionally, although `libsigrok` and
-`libsigrok-decode` (which provides the protocol decoders) have API's and a
+`libsigrok-decode` (which provides the protocol decoders) have APIs and a
 number of language bindings, the decoders themselves aren't very well suited to
 decoding a large amount of high-level data for machine analysis. As a result,
-it was decided to write a custom Python data processing script, with the
-potential for this to be ported to a faster language when completed.
+it was decided that a custom Python data processing script would be written,
+with the potential for this to be ported to a faster language when completed.
 
 Decoding of the synchronous TPIU protocol, which is slightly different to the
 asynchronous variant implemented in the sigrok decoder, was successfully
@@ -1874,7 +1875,7 @@ implemented by referencing the ARM CoreSight Architecture manual [@coresight].
 Additionally, decoding of some ETM packets (extracted from the TPIU stream)
 was achieved by referencing the existing sigrok decoder as well as the ETM
 specification [@etm]. It was at this point that the lack of support
-cycle-accurate tracing support was discovered in the ETM-M4. The decision was
+cycle-accurate tracing support in the ETM-M4 was discovered. The decision was
 made to stop exploring hardware tracing, since cycle accuracy is important to
 this project. It is also likely that a significant amount of further effort
 would be required to make this work at a level equivalent to gem5's tracing
@@ -1889,7 +1890,7 @@ providing a pipeline-based system to configure automated assignment evaluation
 and grading. The system is written in Python, for ease of development and to
 allow for easy scripting capabilities within pipeline definitions.
 
-The source for the application is in the `app/` subdirectory, with the structure
+The source for the application is in the `app/` subdirectory, with its structure
 following that of a standard Python library. `app/perfgrade/` contains the code
 for all of the classes described in this section.
 
@@ -1918,22 +1919,23 @@ steps:
 
 Listing \ref{lst:perfgrade-simple} is an example of a Perfgrade
 configuration file, demonstrating the basic structure of a pipeline definition.
-The outermost object contains only one key: `steps`. This is an array of step
+The outermost object contains only a single key: `steps`. This is an array of step
 definitions. Each step has a number of attributes:
 
 - `id`: An optional shorthand identifier for the step, which allows its
   outputs to be referenced in future steps (as `<id>.<output_prop>`).
 - `type`: The type of step being defined. A number of pre-defined step types are
-  implemented in the Python application to perform a wide range of tasks.
+  implemented in Python to perform a wide range of tasks.
 - `description`: An optional human-readable description of the step (shown in
-  logs)
+  logs).
 - `input`: Type-specific input for the step. This usually contains options and
   references the outputs from previous steps to set up how a step will run.
 
 An additional element seen in Listing \ref{lst:perfgrade-simple} is `!expr`,
-which comes after the YAML key but before its value. A lesser-known feature,
-tags, indicate the underlying type of a value. A tag is always implied but can be
-explicitly specified for any node [@yaml_spec]. The `expr` tag is picked up by Perfgrade
+which comes after the YAML key but before its value. This is based on lesser-known
+feature of YAML, tags, which indicate the underlying type of a value. A tag is
+always implied but can be explicitly specified for any node [@yaml_spec].
+The `expr` tag is picked up by Perfgrade
 and indicates that the value corresponding to the given key should be
 evaluated as a Python expression. For example, `src: !expr build.elf` in listing
 \ref{lst:perfgrade-simple} means that the value of `src` will be dynamically
@@ -1944,10 +1946,10 @@ for any input value (including nested ones), as well as the `description`.
 
 Since the Perfgrade platform is written in Python, a language with object-oriented
 features, each of the step `type`s is implemented as a class inheriting from a
-base `Step`. This class defines a number of methods and defines some common
+base `Step`. This class defines a number of methods and some common
 behaviour, with the `run()` method needing to be implemented by all subclasses
-to provide an actual action to be taken. `close()` can be implemented to perform
-any cleanup when Perfgrade is shutting down.
+to provide an actual action to be taken. `close()` can optionally be implemented
+to perform any required cleanup when Perfgrade is shutting down.
 
 Notably, `Step` provides `_eval_input()`, which is an internal method that
 traverses the `input` tree and evaluates any `!expr`-tagged values as
@@ -1973,8 +1975,8 @@ class Copy(Step):
 ```
 
 Listing \ref{lst:perfgrade-copy} shows the complete implementation of the `copy`
-step type, a simple step which allows one or more files to be copied (using the
-standard library `shutil` functions). Although this step does not provide any
+step type, which allows one or more files to be copied (using the
+standard library `shutil`'s functions). Although this step does not provide any
 outputs, it references elements of the input array, each of which should have a
 `src` file/directory and a `dst` file/directory. The class-level property
 `description` provides a default value, used in log output if none is provided
@@ -1992,8 +1994,8 @@ class Passthrough(Step):
 Listing \ref{lst:perfgrade-passthrough} shows an even further simplified step
 definition. At first glance, this appears to do nothing. However, recall that
 `self.input` refers to the processed input tree, with all expressions evaluated.
-This provides a convenient way to define via YAML a set of values to be
-referenced in later steps, with the added capability to add Python expressions
+This provides a convenient way to define (via YAML) a set of values to be
+referenced in later steps, with the added capability to embed Python expressions
 at any level in the tree.
 
 All expressions have access to the following standard modules: `struct`,
