@@ -5,17 +5,17 @@ papersize: a4
 colorlinks: true
 
 title: Beyond functional autograding of ARM assembly language programs
-subtitle: |
-  Final Year Project (CSU44099)
+subtitle: Final Year Project (CSU44099)
+sub-subtitle: 'Supervisor: Dr. Jonathan Dukes'
 author:
   - |
     [Jack O'Sullivan (osullj19@tcd.ie)](mailto:osullj19@tcd.ie)
-title-extra: |
-  ```{=latex}
-  \textsf{Supervisor: Dr. Jonathan Dukes}
-  ```
 titlepage: true
+titlepage-text-color: FFFFFF
+titlepage-rule-height: 0
+titlepage-background: img/background.pdf
 toc-own-page: true
+
 abstract: |
   # Abstract {.unnumbered .unlisted}
 
@@ -59,7 +59,7 @@ abstract: |
   that were had, along with much extended support and advice.
 
   I'm most grateful to my family, who have always supported my endless tech
-  endeavours to bring me to where I am today! Significant financial investment
+  endeavours which brought me to where I am today! Significant financial investment
   will hopefully pay off in the years to come.
 
   \newpage

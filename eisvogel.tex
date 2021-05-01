@@ -126,6 +126,7 @@ $if(section-titles)$
 }
 $endif$
 $endif$
+\usepackage{scrextend}
 $if(beamerarticle)$
 \usepackage{beamerarticle} % needs to be loaded first
 $endif$
@@ -901,13 +902,19 @@ $if(titlepage-background)$
   \vfill
   \vskip -8em
   \noindent {\huge \textbf{\textsf{$title$}}}
+  \begin{addmargin}[8em]{0em}
   $if(subtitle)$
   \vskip 1em
   {\Large \textsf{$subtitle$}}
   $endif$
-  \vskip 2em
+  $if(sub-subtitle)$
+  \vskip -1em
+  {\normalsize \textsf{$sub-subtitle$}}
+  $endif$
+  \vskip 1em
   \noindent {\Large \textsf{$for(author)$$author$$sep$, $endfor$} \vskip 0.6em \textsf{$date$}}
   \vfill
+  \end{addmargin}
 }
 $else$
 {
@@ -918,7 +925,11 @@ $else$
   \vskip 1em
   {\Large \textsf{$subtitle$}}
   $endif$
-  \vskip 2em
+  $if(sub-subtitle)$
+  \vskip -1em
+  {\normalsize \textsf{$sub-subtitle$}}
+  $endif$
+  \vskip 1em
   \noindent {\Large \textsf{$for(author)$$author$$sep$, $endfor$}}
 
   $if(title-extra)$
