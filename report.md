@@ -1874,12 +1874,17 @@ asynchronous variant implemented in the sigrok decoder, was successfully
 implemented by referencing the ARM CoreSight Architecture manual [@coresight].
 Additionally, decoding of some ETM packets (extracted from the TPIU stream)
 was achieved by referencing the existing sigrok decoder as well as the ETM
-specification [@etm]. It was at this point that the lack of support
+specification [@etm].
+
+It was at this point that the lack of support
 cycle-accurate tracing support in the ETM-M4 was discovered. The decision was
 made to stop exploring hardware tracing, since cycle accuracy is important to
 this project. It is also likely that a significant amount of further effort
 would be required to make this work at a level equivalent to gem5's tracing
-setup. The incomplete Python script, which reads in a list of 4-bit values from
+setup. Hardware tracing remains an option worth exploring, but time and
+resource limitations made it impractical for this project.
+
+The incomplete Python script, which reads in a list of 4-bit values from
 a `sigrok-cli` command's output, is included with the source for this project
 at `app/tpiu_decode.py`.
 
@@ -2011,17 +2016,18 @@ This step type takes a Python program as input, and simply evaluates it. This is
 effectively a long-form version of an inline expression. While an expression
 has limits and must evaluate to a value, the `exec` step uses the Python
 standard `exec()` builtin to run code as if it were a complete script. This step
-type is akin to the `run:` value in a GitHub Actions step.
+type is akin to the `run:` value in a GitHub Actions step, but for Python
+instead of POSIX shell.
 
-_Inputs:_
+_Input:_
 
-The input value is a string, which is parsed as a Python script. All of the
+A string which is parsed as a Python script. All of the
 modules included for `!expr` values are also included here. Use of the
 YAML literal block indicator is recommended [@yaml_multiline].
 
 _Outputs:_
 
-None (`self.output` can be set by the script to provide an output)
+None. `self.output` can be set by the script to provide an output if desired.
 
 _Example:_
 
@@ -2043,11 +2049,11 @@ input: |
 As previously described, this step effectively does "nothing", passing its input
 (_with evaluation of nested expressions_) as the output.
 
-_Inputs:_
+_Input:_
 
 An arbitrary YAML tree.
 
-_Outputs:_
+_Output:_
 
 The evaluated input.
 
@@ -2068,7 +2074,7 @@ input:
 
 Copies files / directories.
 
-_Inputs:_
+_Input:_
 
 An array of objects with `src` and `dst` values. A single object (without being
 wrapped in an array) can also be provided.
@@ -2096,9 +2102,9 @@ Builds a unified firmware (see the dedicated section for further details).
 
 _Inputs:_
 
-- `opencm3`: Path to pre-built `libopencm3` tree.
-- `uut`: Path to the "unit under test" assembly source file.
-- `harness`: Path to an optional test harness (`.c` for C or `.s`/`.S` for
+- `opencm3`: Path to pre-built `libopencm3` tree, required.
+- `uut`: Path to the "unit under test" assembly source file, required.
+- `harness`: Path to an optional test harness (ending in `.c` for C or `.s`/`.S` for
   assembly). This source should export a `do_test()` function to replace the
   default implementation (this simply calls `test()`) which sets up and
   executes the test code.
@@ -2110,7 +2116,7 @@ _Inputs:_
 _Outputs:_
 
 - `dir`: Path to the temporary build directory
-- `uut`: Path of the copied uut (relative to the temporary build directory)
+- `uut`: Path of the copied `uut` (relative to the temporary build directory)
 - `elf`: Absolute path to the final ELF
 - `rom`: Absolute path to the final raw firmware (if requested)
 
@@ -2137,18 +2143,18 @@ Loads the symbol table from an ELF binary, utilising the `pytelftools` library.
 `pyelftools` is "a pure-Python library for parsing and analyzing ELF files and
 DWARF debugging information" [@pyelftools].
 
-_Inputs:_
+_Input:_
 
-A single string, which is the path to an ELF binary.
+A string, which is the path to an ELF binary.
 
 _Output:_
 
 A `SymbolResolver`. This can be used to look up the address of a symbol in the
-ELF's symbol table, accessed as with a dictionary (using `dict['key']` syntax).
+ELF's symbol table. `dict['key']` syntax can be used.
 If a tuple of `('symbol', n)` is used as the key instead of just a symbol name,
-the returned address will have its lowest `n` bits masked off (useful for
+the returned address will have its lowest `n` bits masked off. This is useful for
 de-Thumb'ifying function addresses, which sometimes have the LSB set to force
-a switch to Thumb mode).
+a switch to Thumb mode.
 
 _Example:_
 
@@ -2171,10 +2177,10 @@ firmware (as described in the dedicated section).
 
 In `simulation` mode, the
 evaluation setup described in the "gem5 evaluation" section is used. The
-appropriate gem5 command is constructed and executed, with data being collected
+appropriate gem5 command is constructed and executed, with metrics being collected
 from the output directory.
 
-In `hardware` mode, pyOCD is used to manage real boards (as described) in the
+In `hardware` mode, pyOCD is used to manage real boards as described in the
 "hardware evaluation" section. Since opening and closing connection to a board
 is quite expensive with pyOCD, connections are pooled globally. Connections are
 only closed either when they have been unused for more than 20 seconds or
@@ -2184,13 +2190,13 @@ _Inputs:_
 
 Common (both modes):
 
-- `type`: Mode to run in. `simulation` (for software / gem5) or `hardware`,
-  required.
+- `type`: Mode to run in, required. `simulation` (for software / gem5) or
+  `hardware`.
 - `firmware`: Path to a raw unified firmware binary, required.
-- `timeout`: Maximum amount of evaluation time (seconds). If exceeded, an
-  exception is raised, if unspecified no timeout is enforced.
+- `timeout`: Maximum amount of evaluation time in seconds. If exceeded, an
+  exception is raised. If unspecified, no timeout is enforced.
 - `debug`: Print extra logging information, defaults to false.
-- `gem5`: Path to gem5 source tree. Required for simulation mode. If specified
+- `gem5`: Path to gem5 source tree, required for simulation mode. If specified
   in hardware mode, a dummy trace file will be generated.
 - `test_data`: Object specifying test data to load into memory:
   - `addr`: Address to load test data to, required
@@ -2204,9 +2210,9 @@ Common (both modes):
 `simulation`-only:
 
 - `variant`: The gem5 build variant to use, defaults to `fast`.
-- `config`: Configuration script name (without `.py`). Choices are in
+- `config`: Configuration script name (without `.py`), required. Choices are in
   `app/perfgrade/gem5_config/`, defaults to `stm32f4`.
-- `extra_args`: List of additional command line arguments to pass to gem5.
+- `extra_args`: List of additional command line arguments to pass to gem5, optional.
 
 `hardware`-only:
 
@@ -2280,7 +2286,7 @@ input:
 
 #### `load_traces`
 
-Streams trace data from a protobuf file in the format described in the "gem5
+Streams trace data from a protobuf file in the format described by the "gem5
 evaluation" section (compatible with the `traces` output from an `evaluation`
 step).
 
@@ -2392,11 +2398,11 @@ trace.
 
 _Inputs:_
 
-- `source`: Path to source file to render a heatmap of, required.
+- `source`: Path to the source file to render a heatmap of, required.
 - `compilation_unit`: Name of the compilation unit in the DWARF debugging
   information, required. This is usually the name of the source file relative to
   the path of the working directory used when building the firmware. Should be
-  `src/uut.S` when using unified firmware and the `build` step.
+  `src/uut.S` if using unified firmware and the `build` step.
 - `traces`: `AugmentedTraceStream` object (from an `augment_traces` step),
   required.
 - `total_cycles`: Total cycle count, required.
@@ -2439,13 +2445,13 @@ steps:
 
 #### `curve_guess`
 
-Uses `scipy.optimize.curve_fit()` to guess the closest function that matches a
+Uses `scipy.optimize.curve_fit()` to guess the closest matching function to a
 set of input points [@scipy_curve_fit].
 
 _Inputs:_
 
-- `functions`: A dict of key-value pairs where each value is of the form
-  required by `scipy.optimize.curve_fit()`, required.
+- `functions`: A `dict` of key-value pairs where each value is a function of
+  the form specified by `scipy.optimize.curve_fit()`, required.
 - `data`: An object:
   - `x`: Array of X-axis values, required.
   - `y`: Array of Y-axis values, required.
@@ -2453,7 +2459,7 @@ _Inputs:_
 _Outputs:_
 
 - `function`: Key of closest matching function in the provided `functions`.
-- `error`: The magnitude of the estimate error.
+- `error`: The magnitude of the estimated error.
 - `params`: Fitted function parameters.
 
 _Example:_
@@ -2494,7 +2500,7 @@ _Inputs:_
 - `xlabel`: Label to show on the X-axis, optional.
 - `graph_file`: Filename of graph to generate, optional.
 
-_Outputs:_
+_Output:_
 
 A grade value.
 
@@ -2518,7 +2524,7 @@ input:
 
 #### `diff`
 
-Generates a diff between two input arrays using the standard module `difflib`,
+Generates a diff between two input arrays using the standard module `difflib`;
 specifically the function `difflib.unified_diff()`.
 
 _Inputs:_
@@ -2553,8 +2559,8 @@ steps:
 #### `pipeline`
 
 The implementation of an actual multi-step pipeline. Internally used to create
-and execute a pipeline from an input file. Useful for creating sub-pipelines
-that can be used with the `mapped` step.
+and execute a pipeline from an input file. Useful to create sub-pipelines
+for the `mapped` step.
 
 _Inputs:_
 
@@ -2562,17 +2568,17 @@ See the "pipeline configuration format" section.
 
 _Outputs:_
 
-A dict with all of the pipeline steps' outputs (keys are step ID's).
+A `dict` with all of the pipeline steps' outputs (keys are step IDs).
 
 #### `mapped`
 
-Map a step over a list and collect the outputs. Can be used to iterate over a
-list of with a step (or multiple steps if a `pipeline` is used as the base
-step).
+Map a step over an object and collect the outputs. Can be used to iterate over a
+list of items with a step, or multiple steps if a `pipeline` is used as the base
+step.
 
 _Inputs:_
 
-- `parallel`: Number of steps to run in parallel (in separate threads), defaults
+- `parallel`: Number of steps to run in parallel with separate threads, defaults
   to 1 (i.e. no parallelism).
 - `items`: The object to map the `step` over (e.g. a list), required.
 - `step`: A step definition to map the `items` over, required. For the step, `i`
@@ -2611,7 +2617,7 @@ steps:
 
 #### `include`
 
-Include a step definition from an external YAML file. Useful for sharing common
+Import a step definition from an external YAML file. Useful for sharing common
 functionality. Note: The included step's ID will be replaced with the ID of
 the `include` step.
 
@@ -2628,12 +2634,12 @@ Whatever the output of the included step is.
 
 Perfgrade can be installed in a manner similar to any other Python package, but
 requires some additional work to use evaluation features (both `gem5` and
-`hardware`). A Docker image is also provided (with these additional dependencies
-pre-installed).
+`hardware`). A Docker image is also provided with these additional dependencies
+pre-installed.
 
 #### Docker image usage
 
-To use Perfgrade via the Docker image, simply run
+To run Perfgrade via the Docker image, simply do
 `./perfgrade.sh /path/to/pipeline.yaml` from the `app/` directory (assuming Docker
 is installed and working). The sections below describing the installation process
 are unnecessary if Docker is used to run Perfgrade.
@@ -2668,18 +2674,18 @@ Alternatively, the pack can be downloaded from ARM and passed as an
 #### Running Perfgrade
 
 With all dependencies installed, `perfgrade /path/to/pipeline.yaml` should work.
-For detailed example pipelines, see `app/examples/`.
+For detailed sample pipelines, see `app/examples/`.
 
 \newpage
 
 # Evaluation
 
-In order to test the effectiveness and validity of the complete Perfgrade
+In order to test the effectiveness and value of the complete Perfgrade
 system, an autograding deployment mirroring that of the real Introduction to
 Computing setup was created (based on Submitty). First year students were then
 given the opportunity
 to submit three of their previous assignments from Part II of the Intro to
-Computing course (anonymously). Following this, they could complete a short
+Computing course anonymously. Following this, they could complete a short
 survey on the usefulness of the automated performance feedback they received. A
 short "guest lecture" session was given to explain the project and the system.
 
@@ -2695,7 +2701,7 @@ given for Introduction to Computing II:
 - `expressions` ("Reverse Polish Notation" / "Stacks"). Reverse Polish Notation
   expression calculator.
 
-A set of three Perfgrade pipelines ("Build", "Correctness" and "Performance")
+A set of three Perfgrade pipelines "Build", "Correctness" and "Performance"
 was created to handle grading of each assignment. These three distinct pipelines
 match the diagram in figure \ref{fig:high_level_generic} and additionally make
 integration with Submitty a little easier. Each key step will be explained, with
@@ -2837,7 +2843,7 @@ All of the memory values are in the `.bss` section so that the evaluator
 ### Correctness
 
 This pipeline is analagous to the existing autograding already performed for
-Introduction to Computing, loading a test case and inspecting memory upon
+Introduction to Computing; loading a test case and inspecting memory upon
 completion to ensure the student's submission can produce the correct output.
 
 #### `cases`
@@ -2901,9 +2907,9 @@ input:
 ```
 
 The `evaluate` step loads the test case into memory at `size` (from the symbol
-table); all of the data needed is contiguous and `common.encode()` will produce
-the correct data. Note that the data is only loaded when `main` is reached,
-since `libopencm3`'s initialization routines will zero out the `.bss` section.
+table). All of the values needed are contiguous and `common.encode()` will produce
+the correct data. Note that the test data is only loaded when `main` is reached,
+since `libopencm3`'s initialization routine will zero out the `.bss` section.
 The `result` value is dumped for comparison with the expected value (a boolean
 indicating whether or not the smaller square was a subarray).
 
@@ -2921,18 +2927,18 @@ input: |
 
 After evaluation, the `a` and `b` lists are updated with strings which should be
 equal based on the expected and real booleans. These will be fed into a `diff`
-step later. The total number of correct test cases is counted.
+step later. The total number of correct test cases is also counted.
 
 #### `compare` / `write_diff`
 
-Uses a `diff` and `exec` step to compare `cases.a` to `cases.b`. This will be
+Uses `diff` and `exec` steps to compare `cases.a` to `cases.b`. This diff be
 written to a file (`diff.txt`) which will show a human-friendly summary of
 any incorrect test cases.
 
 #### `write_submitty_results`
 
-Generates a JSON file in the structure required by Submitty to set the score
-of the Correctness step (discuessed later).
+Generates a JSON file with the structure required by Submitty to set the score
+of the Correctness step (discussed later).
 
 ### Performance
 
@@ -2943,7 +2949,7 @@ The pipeline which actually performs all of the performance analysis.
 Two steps which are very similar to the `cases` and `eval_cases` steps in the
 correctness pipeline. The steps used to read the result from memory after
 execution has completed have been removed since whether or not the result is
-correct is not relevant when checking performance.
+correct is not relevant when evaluating performance.
 
 #### `traces` / `extra_traces` / `trace_count`
 
@@ -2990,7 +2996,7 @@ input:
 ```
 
 Generates a heatmap from the simulation's traces and cycle count. `heatmap_pdf`
-uses `wkhtmltopdf` to render the HTML document for use with Submitty.
+uses `wkhtmltopdf` to render the HTML document to a PDF for use with Submitty.
 
 #### `trace_eval_hw` / `hw_traces` / `hw_count`
 
@@ -3011,7 +3017,7 @@ extra_options:
 ```
 
 These steps run the same evaluation as the previous steps, but in hardware. The
-snippet above shows the key different parameters provided to the `evaluate` step
+snippet above shows the different parameters provided to the `evaluate` step
 so that the execution takes places correctly in hardware. The cycle count is
 then calculated from the fake trace data as a comparison point to the simulated
 value.
@@ -3177,19 +3183,20 @@ evaluation deployment directly comparable and familiar to students.
 ![Dell PowerEdge R720 server used for evaluation (with 2 STM32F4 discovery boards)\label{fig:deployment_hardware}](img/deployment_hardware.jpg)
 
 Using the existing SCSS deployment of Submitty was not an option for this
-project, for a multitude of reasons, privacy and stability of the system being
-top concerns. It was therefore necessary to deploy Submitty itself as the
-initial step in the evaluation deployment process. Figure
+project, for a number of reasons. Experimentation with the existing deployment
+could have caused a number of issues and student privacy would have been a
+concern. It was therefore necessary to deploy Submitty itself as the
+initial step in the evaluation setup process. Figure
 \ref{fig:deployment_hardware} shows the Dell PowerEdge R720 server that was used
 for the test setup, including two boards connected that will later be used for
 hardware evaluation. Note that the server is mainly for personal use and is
 running a significant number of existing services, which influenced the
 deployment methodology.
 
-As alluded to previously, the installation of Submitty demands quite a
+As state previously, the installation of Submitty demands quite a
 specific environment: a Ubuntu 18.04 Server VM [@submitty_installation]. Due to
 limited hypervisor capacity on the server, an LXD-based container was used
-instead (an existing VM has resources available to allocate to a number of LXD
+instead (an existing VM had resources available to allocate to a number of LXD
 containers). LXD containers use similar technology to Docker, but aim to replicate
 a VM-style system environment [@lxd]. Since an official Ubuntu 18.04 image is
 provided by Canonical, there were relatively few additional steps needed to
@@ -3197,7 +3204,7 @@ install Submitty beyond those specified in the documentation.
 
 Once installed, it was possible to create a test course by following the
 standard system administrator course creation documentation. At this point, only
-a single admin user is being used to test the deployment - anonymous signups
+a single admin user was being used to test the deployment - anonymous signups
 will be needed later.
 
 ### Preparing the OS for Perfgrade
@@ -3209,7 +3216,7 @@ possible to use the Docker image. The installation was done within a Python
 virtual environment, which simplifies dependency management and prevents
 interference with the system-wide installation of Python [@venv]. gem5 was
 compiled on the workstation machine used to develop this project, since its
-AMD Ryzen Threadripper CPU cut down the build time significantly. The same LXD
+more powerful CPU could cut down the build time significantly. The same LXD
 image was used to make sure dependencies would link correctly, and the source
 tree was simply copied over.
 
@@ -3260,7 +3267,7 @@ exec venv-run --venv /opt/perfgrade -- perfgrade "$@"
 
 **Note:** Submitty has a peculiar feature where only certain commands may be
 provided for a `testcase`. These must be either on a pre-approved list (which is
-hardcoded in a C++ file), or start with `./` (i.e. be paths relative to the
+hardcoded in a C++ source file), or start with `./` (i.e. be paths relative to the
 current directory). This is probably something left over from the initial
 internal-only version of the system. Because of this, it's not possible to run
 a command like `perfgrade` directly. To solve the issue, a simple shell script
@@ -3337,11 +3344,11 @@ Executes the Correctness pipeline:
   command to perform validation in the "Validation" phase. However, to make
   pipeline design easier, the results are generated in the Correctness pipeline
   (as previously explained).
-  - The "validation command" just copies the appropriate JSON file.
+  - The "validation command" just copies the appropriate JSON file into place.
   - `show_actual` is set to `never` since this file shouldn't be seen by users.
   - `deduction` is set to 1. This is set to 1 and not 4 because Submitty adds
     all of the deduction values up to 1 to determine the proportion of points
-    that should be deducted from the title.
+    that should be deducted from the total.
 - The second validator is `errorIfNotEmpty` on the `diff.txt` file, which will
   be empty if all of the correctness cases matched.
 - Not shown here are the same `stderr` and `stdout` "validators" used to show
@@ -3379,8 +3386,8 @@ Executes the Performance pipeline, mostly the same as the Correctness
 grade) and Perfgrade logs are not shown. `errorIfEmpty` validators are used to
 show the statistics, heatmap, grade curve and performance curve in the web UI.
 Note that all of the visualisations are in PDF format, as most other filetypes
-will be printed in text form (a hardcoded exception exists for PDF files,
-which are embedded as `<iframe>`s).
+will be printed in text form (a hardcoded exception exists within Submitty for
+PDF files, which are embedded as `<iframe>`s).
 
 #### File management
 
@@ -3397,17 +3404,17 @@ autograding:
 ```
 
 For each phase of autograding, Submitty needs to
-know which files should be carried from to the next. While all three phases
-("Compilation", "Execution" and "Validation" are technically used, Perfgrade
+know which files should be carried to the next. While all three phases
+("Compilation", "Execution" and "Validation") are technically used, Perfgrade
 pipelines are only ever used in the "Compilation" and "Execution" phases.
 
 1. All of the required files (pipelines and associated extras) are placed in the
    `provided_code` directory, which Submitty automatically copies into the
    compilation phase working directory.
 2. `subarray.s`, the student's submitted source code, is required in the
-  "compilation" phase for the "Build" pipeline, so it is included in the
-  `submission_to_compilation` array (in order for Submitty to copy it into the
-  appropriate working directory).
+   compilation phase for the "Build" pipeline, so it is included in the
+   `submission_to_compilation` array (in order for Submitty to copy it into the
+   appropriate working directory).
 3. `subarray.s` is also required for the execution phase (for heatmap
    generation), so it is included in the `submission_to_runner` array.
 4. `compilation_to_runner` lists all the files that should be copied from the
@@ -3461,13 +3468,13 @@ server {
 ```
 
 In order for students to submit their solutions, the Submitty server must be
-publicly accessible over the internet and anonymous signup is needed. Since
+publicly accessible over the internet. Anonymous signup is also needed. Since
 Submitty does not natively provide any form of user registration system, a
 basic web application was written in Go to facilitate this. Listing
 \ref{lst:submitty-nginx} shows the nginx reverse proxy configuration snippet
 used to make Submitty accessible over the internet, along with the registration
-system. Note that the nginx server used here is used for a number of other
-unrelated services and is therefore pre-configured to be accessed over TLS with
+system. Note that the nginx server being configured here is used for a number of other
+unrelated services and is therefore already set up to be accessed over TLS with
 appropriate certificates and DNS records. The hostnames for the backends come
 from an internal DNS server.
 
@@ -3512,7 +3519,7 @@ password with which to log in and submit assignments.
 The following pages show screenshots of the Submitty assignment submission
 interface with Perfgrade integration (for the "2D Arrays" assignment). The
 code used for submission was the instructor's solution. These images
-essentially summarise the combination of all components implemented for the
+essentially summarise the integration of all components implemented for the
 project.
 
 ![Submission overview](img/submitty_sub_overview.png)
@@ -3538,7 +3545,7 @@ lecture and an email announcement sent to the class:
 
 - About 50 students registered with the Submitty system (approximately 100
   attendees at the lecture). The exact number is difficult to determine since
-  all signups are anonymous and a few accounts were used for testing.
+  all signups are anonymous and a few accounts were used for development.
 - There was an approximate submission rate of 55% - 65% for each of the three
   assignments:
     - Arrays: 66.1%
@@ -3581,7 +3588,7 @@ to be very successful.
 
 The test Submitty deployment exceeded expectations for this project. A concern
 when making the system publicly accessible to a large class of students was that
-failures would occur, especially with the dependence on actual hardware for a
+failures would occur, especially with the dependence on real hardware for a
 significant amount of testing. This was further exasperated by the fact that
 relatively little time was available to test the completely integrated system
 before it was made public!
@@ -3595,7 +3602,7 @@ submissions might not have been fully functional with the original tests anyway.
 
 The fact that no total system failures occurred, such as Submitty crashing or
 the STM32F4 boards being left in an unusable state, was actually a little
-surprising. This lack of problems did make for a smooth experience for students.
+surprising. This lack of problems made for a smooth experience for students.
 
 Looking at the combined grade curve graphs, it's clear that the log-log buckets
 would need to be adjusted if this system were to be deployed for real
@@ -3619,7 +3626,7 @@ The majority of students agreed that the feedback from the system would also
 help with improving performance for other programs, further reinforcing the
 perceived learning value.
 
-Respondents were far less certain on the ability of Perfgrade to help with
+Respondents were less certain on the ability of Perfgrade to help with
 concepts in ARM assembly programming. This does make sense, as the feedback
 generated by the system doesn't really give much of an explanation of the
 factors that can affect performance, or what the metrics mean. Specific teaching
@@ -3635,14 +3642,14 @@ the value added by the system is worth the "risk" of a lower grade.
 ## Project goals
 
 Generally speaking, the goals of the project were all met. Performance
-evaluation in both software and hardware was sucessfully achieved.
+evaluation in both software and hardware was sucessfully developed.
 
 It was possible to achieve quite an effective accurate simulation of an STM32F407
 through the use of gem5. Looking at the difference in cycle counts between the
 simulator and hardware, there is a relatively significant gap. Unfortunately, it
 would likely be necessary to commit a significant amount of time to improving
 the configuration parameters to achieve a level close to true cycle-accuracy.
-As previously alluded to, access to proprietary IP from ARM probably be
+As previously stated, access to proprietary IP from ARM would probably be
 required too. Simulating any Cortex-M4 or STM32F407 peripherals would
 also require a lot of time and research, although this isn't particularly
 relevant for Introduction to Computing, where the focus is on basic assembly
@@ -3650,8 +3657,8 @@ language programming.
 
 The correctness checking features implemented via supplementary gem5
 `SimObject`s were quite useful, and were a cleaner solution than using `gdb`'s
-interface to inspect registers or memory (a method employed by current
-autograding configurations). Producing a detailed, machine-readable trace of
+interface to inspect registers or memory, a method employed by current
+autograding configurations. Producing a detailed, machine-readable trace of
 execution in gem5 was very helpful for more advanced performance measurement
 later on.
 
@@ -3679,21 +3686,21 @@ results observed from internal testing.
 ## Challenges
 
 A number of significant challenges were faced in the development of this
-project. Initially, working with gem5 was the greatest of these. The lacking
-documentation for the project as well as very large codebase led to a
+project. Initially, working with gem5 was the greatest of these. The lack of
+documentation for the project as well its very large codebase led to a
 significant learning curve that consumed a lot of time when attempting to get
 STM32F4 code to execute in the simulator. Creating the unified firmware, running
 code in hardware and the Perfgrade system each took quite a lot
 of work, but development of these pieces was relatively trouble-free.
 
-Working with Submitty proved to be quite frustrating, due in part to lacking
+Working with Submitty proved to be quite frustrating, due in part to its
 documentation, although this specific issue was not encountered to the same
 degree as with gem5. The main cause of issues was Submitty's overall design
 and architecture, combined with the results of open-sourcing and extending this
 system. Parts of Submitty are quite convoluted and confusing, notably the
 autograding configuration system. Many components are involved in this, from the
 PHP frontend, Python grading daemon to the C++ execution code. There are often
-a multitude of ways to achieve a single task, such as generating results to
+many ways to achieve a single task, such as generating results to
 show in the web UI, with it often not being clear which should be used. The
 over-reliance on scattered command-line tools and direct modification of
 internal structures such as the PostgreSQL database did not help.
