@@ -3505,7 +3505,72 @@ password with which to log in and submit assignments.
 
 \newpage
 
-# Results and conclusions
+# Results
+
+## Submission interface
+
+The following pages show screenshots of the Submitty assignment submission
+interface with Perfgrade integration (for the "2D Arrays" assignment). The
+code used for submission was the instructor's solution. These images
+essentially summarise the combination of all components implemented for the
+project.
+
+![Submission overview](img/submitty_sub_overview.png)
+
+![Build output](img/submitty_sub_build.png)
+
+![Correctness output (all correct)](img/submitty_sub_correctness.png)
+
+![Correctness output (incorrect test case)](img/submitty_sub_correctness_bad.png)
+
+![Performance statistics](img/submitty_sub_perf_stats.png)
+
+![Performance heatmap (split in half for better scaling)](img/submitty_sub_perf_heatmap.png)
+
+![Performance grade curve](img/submitty_sub_perf_grade.png)
+
+![Performance curve](img/submitty_sub_perf_guess.png)
+
+## Student submissions
+
+Following the presentation of the project at an Introduction to Computing
+lecture and an email announcement sent to the class:
+
+- About 50 students registered with the Submitty system (approximately 100
+  attendees at the lecture). The exact number is difficult to determine since
+  all signups are anonymous and a few accounts were used for testing.
+- There was an approximate submission rate 55% - 65% for each of the three
+  assignments:
+    - Arrays: 66.1%
+    - 2D Arrays: 58.9%
+    - Stacks: 55.4%
+
+For each of the assignments, combined "grade curve" graphs were produced for all
+submissions. Note that outliers with log-log values of 0 were excluded, since
+these solutions did not execute correctly. Figures
+\ref{fig:results_arraymove_all}, \ref{fig:results_subarray_all} and
+\ref{fig:results_expressions_all} show these graphs:
+
+![All assignment 1 grades\label{fig:results_arraymove_all}](img/results_arraymove_all.png)
+
+![All assignment 2 grades\label{fig:results_subarray_all}](img/results_subarray_all.png)
+
+![All assignment 3 grades\label{fig:results_expressions_all}](img/results_expressions_all.png)
+
+## Survey results
+
+19 responses to the survey featuring 5 Likert scale questions on the
+effectiveness of the system were received:
+
+![Survey question 1 responses](img/survey_q1.png)
+![Survey question 2 responses](img/survey_q2.png)
+![Survey question 3 responses](img/survey_q3.png)
+![Survey question 4 responses](img/survey_q4.png)
+![Survey question 5 responses](img/survey_q5.png)
+
+\newpage
+
+# Discussion and conclusion
 
 \newpage
 
